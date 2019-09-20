@@ -1,0 +1,53 @@
+1-Generar 2 particiones 100%
+
+$ dd if=/dev/zero of=disco1.img bs=512 count=2097152
+# losetup -vf disco1.img
+# fdisk /dev/loop0
+Orden (m para obtener ayuda): n
+Tipo de partición
+   p   primaria (0 primaria(s), 0 extendida(s), 4 libre(s))
+   e   extendida (contenedor para particiones lógicas)
+Seleccionar (valor predeterminado p): 
+
+Se está utilizando la respuesta predeterminada p.
+Número de partición (1-4, valor predeterminado 1): 
+Primer sector (2048-2097151, valor predeterminado 2048): 
+Último sector, +/-sectores o +/-tamaño{K,M,G,T,P} (2048-2097151, valor predeterminado 2097151): +500M
+
+Crea una nueva partición 1 de tipo 'Linux' y de tamaño 500 MiB.
+
+Orden (m para obtener ayuda): n
+Tipo de partición
+   p   primaria (1 primaria(s), 0 extendida(s), 3 libre(s))
+   e   extendida (contenedor para particiones lógicas)
+Seleccionar (valor predeterminado p): 
+
+Se está utilizando la respuesta predeterminada p.
+Número de partición (2-4, valor predeterminado 2): 
+Primer sector (1026048-2097151, valor predeterminado 1026048): 
+Último sector, +/-sectores o +/-tamaño{K,M,G,T,P} (1026048-2097151, valor predeterminado 2097151): 
+
+Crea una nueva partición 2 de tipo 'Linux' y de tamaño 523 MiB.
+
+Orden (m para obtener ayuda): w
+Se ha modificado la tabla de particiones.
+Llamando a ioctl() para volver a leer la tabla de particiones.
+Fallo al leer de nuevo la tabla de particiones.: Argumento inválido
+
+El núcleo todavía usa la tabla antigua. La nueva tabla se usará en el próximo reinicio o después de que usted ejecute partprobe(8) o kpartx(8).
+
+sudo partprobe /dev/loop0
+
+
+2-Redimensionar las particiones
+Partición 1-> Final:1026047
+Partición 2-> Inicio:1026047
+Tengo que hacer que la partición 2 termine en algo mas adelante
+y la partición 1 justo en ese algo mas adelante
+
+Por ejemplo movemos la particion 2 al bloque 1500000
+Entonces la partición 1 terminará ahí
+	
+
+1gib=2097152
+500MiB=1048576
