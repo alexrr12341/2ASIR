@@ -47,7 +47,12 @@ y la partición 1 justo en ese algo mas adelante
 
 Por ejemplo movemos la particion 2 al bloque 1500000
 Entonces la partición 1 terminará ahí
-	
+
+Entramos en modo experto
+Damos a la b-> Elegimos la partición 2
+Y le ponemos que empiece en el 1500000
+Y ahora modificamos el final de la partición 1.
+
 
 1gib=2097152
 500MiB=1048576
