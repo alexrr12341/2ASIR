@@ -1,0 +1,2 @@
+*Tarea 1 (1 punto): Lee el documento Teoría: Servidor DHCP y explica el funcionamiento del servidor DHCP resumido en este gráfico.*
+Cuando el cliente DHCP se inicializa este entra en estado INIT y este envia un DHCPDiscover.
