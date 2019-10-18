@@ -1,0 +1,74 @@
+h2. Tarea 1: Generación de claves (1 punto)
+
+*1. Genera un par de claves (pública y privada). ¿En que directorio se guarda las claves de un usuario?*
+
+Para generar el par de claves utilizamos el siguiente comando:
+
+<pre>
+gpg --gen-key
+</pre>
+
+<pre>
+gpg (GnuPG) 2.2.17; Copyright (C) 2019 Free Software Foundation, Inc.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Nota: Usa "gpg --full-generate-key" para el diálogo completo de generación de clave.
+
+GnuPG debe construir un ID de usuario para identificar su clave.
+
+Nombre y apellidos: Alejandro Rodríguez Rojas
+Dirección de correo electrónico: alexrodriguezrojas98@gmail.com
+Está usando el juego de caracteres 'utf-8'.
+Ha seleccionado este ID de usuario:
+    "Alejandro Rodríguez Rojas <alexrodriguezrojas98@gmail.com>"
+
+¿Cambia (N)ombre, (D)irección o (V)ale/(S)alir? V
+Es necesario generar muchos bytes aleatorios. Es una buena idea realizar
+alguna otra tarea (trabajar en otra ventana/consola, mover el ratón, usar
+la red y los discos) durante la generación de números primos. Esto da al
+generador de números aleatorios mayor oportunidad de recoger suficiente
+entropía.
+Es necesario generar muchos bytes aleatorios. Es una buena idea realizar
+alguna otra tarea (trabajar en otra ventana/consola, mover el ratón, usar
+la red y los discos) durante la generación de números primos. Esto da al
+generador de números aleatorios mayor oportunidad de recoger suficiente
+entropía.
+gpg: clave 1CA5259568627FEF marcada como de confianza absoluta
+gpg: creado el directorio '/home/alexrr/.gnupg/openpgp-revocs.d'
+gpg: certificado de revocación guardado como '/home/alexrr/.gnupg/openpgp-revocs.d/8EA1F9C7DB1DF4BED396BDF01CA5259568627FEF.rev'
+claves pública y secreta creadas y firmadas.
+
+pub   rsa3072 2019-10-07 [SC] [caduca: 2021-10-06]
+      8EA1F9C7DB1DF4BED396BDF01CA5259568627FEF
+uid                      Alejandro Rodríguez Rojas <alexrodriguezrojas98@gmail.com>
+sub   rsa3072 2019-10-07 [E] [caduca: 2021-10-06]
+</pre>
+
+Se guardan en /home/usuario/.gnupg
+
+
+*2. Lista las claves públicas que tienes en tu almacén de claves. Explica los distintos datos que nos muestra. ¿Cómo deberías haber generado las claves para indicar, por ejemplo, que tenga un 1 mes de validez?*
+
+Para listar las claves públicas:
+<pre>
+gpg --list-keys
+
+pub   rsa3072 2019-10-07 [SC] [caduca: 2021-10-06]
+      07C2323FF578FA4339796C35037C4BC2B4F18FCA
+uid        [  absoluta ] Alejandro Rodríguez Rojas <alexrodriguezrojas98@gmail.com>
+sub   rsa3072 2019-10-07 [E] [caduca: 2021-10-06]
+</pre>
+
+Para listar las claves privadas:
+<pre>
+gpg --list-secret-keys
+
+sec   rsa3072 2019-10-07 [SC] [caduca: 2021-10-06]
+      07C2323FF578FA4339796C35037C4BC2B4F18FCA
+uid        [  absoluta ] Alejandro Rodríguez Rojas <alexrodriguezrojas98@gmail.com>
+ssb   rsa3072 2019-10-07 [E] [caduca: 2021-10-06]
+</pre>
+
+
+Nos muestra el formato con el que está hecho (rsa3072), tiene confianza absoluta, caduca en el 2021-10-06 y fue creada el 2019-10-07.

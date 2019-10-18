@@ -1,0 +1,84 @@
+*Tarea 1 (1 punto)(Obligatorio): Crea un escenario Vagrant con una máquina con una red pública o utiliza una máquina del cloud. Instala el servidor web Apache2 en la máquina. Modifica la página index.html que viene por defecto y accede a ella desde un navegador. Entrega una captura de pantalla accediendo a ella.*
+<pre>
+apt install apache2
+</pre>
+En /var/www/html editamos el fichero index.html y accedemos a la IP de la máquina en nuestro navegador
+!Apache.png!
+
+*Tarea 2 (2 puntos)(Obligatorio): Configura la resolución estática en los clientes y muestra el acceso a cada una de las páginas.*
+
+Primero de todo creamos el escenario con las carpetas
+<pre>
+mkdir /srv/www
+mkdir /srv/www/iesgn
+mkdir /srv/www/departamentos
+chown -R www-data:www-data /srv/www
+</pre>
+
+En /etc/apache2/apache2.conf ponemos la siguiente linea
+<pre>
+<Directory /srv/www/>
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+</Directory>
+</pre>
+
+Y en /etc/apache2/sites-available hacemos
+<pre>
+cp 000-default.conf iesgn.conf
+cp 000-default.conf departamentos.conf
+</pre>
+
+iesgn.conf:
+
+<pre>
+<VirtualHost *:80>
+        ServerName www.iesgn.org
+
+        ServerAdmin webmaster@localhost
+        DocumentRoot /srv/www/iesgn
+
+
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+        CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+</VirtualHost>
+
+</pre>
+
+departamentos.conf:
+<pre>
+<VirtualHost *:80>
+        ServerName www.departamentos.iesgn.org
+
+        ServerAdmin webmaster@localhost
+        DocumentRoot /srv/www/departamentos
+
+
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+        CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+</VirtualHost>
+
+</pre>
+
+Ahora habilitamos los sitios
+<pre>
+a2ensite iesgn
+a2ensite departamentos
+systemctl restart apache2
+</pre>
+
+Para acceder a los virtual host debemos poner el DNS en nuestra máquina en /etc/hosts
+
+!iesgn.png!
+
+!departamentos.png!
+
+
+*Tarea 3 (1 punto)(Obligatorio): Cuando se entre a la dirección www.iesgn.org se redireccionará automáticamente a www.iesgn.org/principal, donde se mostrará el mensaje de bienvenida. En el directorio principal no se permite ver la lista de los ficheros, no se permite que se siga los enlaces simbólicos y no se permite negociación de contenido. Muestra al profesor el funcionamiento.*
+
+
+
+

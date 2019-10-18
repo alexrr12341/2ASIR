@@ -1,2 +1,46 @@
 *Tarea 1 (1 punto): Lee el documento Teoría: Servidor DHCP y explica el funcionamiento del servidor DHCP resumido en este gráfico.*
-Cuando el cliente DHCP se inicializa este entra en estado INIT y este envia un DHCPDiscover.
+*Selecting->*
+
+Cuando el cliente DHCP se inicializa este entra en estado INIT y este envia un DHCPDiscover (Antes de esto el cliente espera entre 1 a 10 segundos para evitar colisiones con otros clientes).
+
+*Requesting->*
+
+Después el cliente recibe los DHCPOFFER de los servidores, si el cliente recibe varias, escoje solo una. El cliente enviará un DHCPREQUEST para elegir dicho servidor, y este le responderá con DHCPACK.
+
+*Bound->*
+
+El cliente ya obtiene su dirección y entra en estado de Bound, en este estado existen 3 tiempos.
+
+*T1-> Tiempo de renovación*
+Suele ser 1/2 del T3, este busca un nuevo DHCPOFFER del servidor, si el servidor sigue activo, le mandará un DHCPACK y recibirá una nueva dirección, sino pasará al T2.
+
+*T2-> Tiempo de reenganche*
+Suele ser 0,875x de T3, el cliente espera a que el servidor DHCP responda, cuando expira, este busca en la red cualquier servidor DHCP para recibir un DHCPOFFER.
+
+*T3-> Tiempo de concesión*
+Si el cliente no ha recibido su dirección, este debe devolver la IP y la capacidad de acceder a dicha red y este volverá al estado INIT (El cliente también puede cancelar su alquiler voluntariamente)
+
+
+
+*Tarea 8 (2 puntos)(Obligatorio): Indica las modificaciones realizadas en los ficheros de configuración y entrega una comprobación de que el cliente ha tomado esa dirección.*
+
+Para hacer una reserva necesitamos la MAC del cliente, en este caso es la 08:00:27:f4:67:84
+
+Modificamos el fichero etc/dhcp/dhcpd.conf y ponemos el nuevo host
+
+<pre>
+        host nodolan1 {
+        hardware ethernet 08:00:27:f4:67:84;
+        fixed-address 192.168.100.55;
+        }
+</pre>
+
+Y vemos que efectivamente le da la IP que le hemos asignado
+<pre>
+3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:f4:67:84 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.100.55/24 brd 192.168.100.254 scope global dynamic eth1
+       valid_lft 60sec preferred_lft 60sec
+    inet6 fe80::a00:27ff:fef4:6784/64 scope link 
+       valid_lft forever preferred_lft forever
+</pre>

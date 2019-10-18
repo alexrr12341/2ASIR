@@ -1,0 +1,14 @@
+Instancia en el cloud
+
+Vamos a poner un sistema hibrido
+Version por defecto debian buster
+INSTALAMOS ALGUNOS PAQUETES DE SID
+
+Y un sistema con varias arquitecturas
+Los paquetes de debian sid lo instalo en 32 bits
+
+Le doy la vuelta a mi sistema->
+
+Los paquetes que están en 32 bits pasan a 64 bits y los de 64 a 32 bits
+
+El kernel se debe quedar en 64 bits amd64

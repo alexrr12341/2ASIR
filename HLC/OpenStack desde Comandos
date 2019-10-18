@@ -1,0 +1,34 @@
+Creamos entorno virtual
+-----------------------
+apt install python3-venv 
+
+python3 -m venv openstack
+
+source openstack/bin/activate
+
+apt install libpython3-dev
+
+pip install python-openstackclient
+
+
+Utilizacion de openstack
+------------------------
+Acceso y seguridad-->Acceso a la API---> Descargar fichero RC de Openstack v3
+
+nano Proyecto\ de\ alejandro.rodriguez-openrc.sh
+export OS_CACERT=/usr/local/share/ca-certificates/gonzalonazareno.crt
+source Proyecto\ de\ alejandro.rodriguez-openrc.sh
+
+openstack server list -> Servidores
+
+openstack image list -> Imagenes
+
+openstack flavor list -> Sabores
+
+openstack keypair list -> Par de claves
+
+openstack floating ip list -> Lista de Ips Flotantes
+
+openstack server create --image bf688ff8-549e-4de6-8e96-13b10e85f1fe --flavor 12 --nic net-id=73acd948-99c9-4394-97d0-e8c059f37eca Prueba
+
+openstack server add floating ip Prueba 172.22.200.55 -> Añadir ip flotante
