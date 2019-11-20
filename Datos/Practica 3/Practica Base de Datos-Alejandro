@@ -1,0 +1,263 @@
+
+    1. Crea un rol ROLPRACTICA1 con los privilegios necesarios para conectarse a la base de datos, crear tablas y vistas e insertar datos en la tabla EMP de SCOTT.
+alter session set "_ORACLE_SCRIPT"=true;
+Create role rolpractica1;
+grant create session to rolpractica1;
+grant create view to rolpractica1;
+grant create table to rolpractica1;
+grant insert on SCOTT.EMP to rolpractica1;
+
+
+--Vamos a crear el usuario SCOTT
+CREATE USER SCOTT IDENTIFIED BY TIGER DEFAULT TABLESPACE USERS TEMPORARY TABLESPACE TEMP PROFILE DEFAULT;
+GRANT CONNECT, RESOURCE TO SCOTT;
+ALTER USER SCOTT ACCOUNT UNLOCK;
+ALTER USER SCOTT quota unlimited on USERS;
+
+
+--Vamos a probar si se puede conectar un usuario con ese rol y crear tablas y vistas
+
+Create user prueba1 identified by prueba1;
+grant rolpractica1 to prueba1;
+
+
+SQL> connect prueba1/prueba1;
+Conectado.
+
+Sesión modificada.
+
+
+SQL> Create table Prueba
+(
+	Prueba Varchar2(10)
+);  2    3    4  
+
+Tabla creada.
+
+
+SQL> 
+Create view Vista as
+Select Prueba
+from Prueba;SQL>   2    3  
+
+Vista creada.
+
+
+-- Vamos a probar que podemos insertar datos en SCOTT.EMP
+
+INSERT INTO SCOTT.EMP VALUES(8000, 'Prueba', 'CLERK', 7782,TO_DATE('23-ENE-1983', 'DD-MON-YYYY'), 1300, NULL, 10);
+
+
+1 fila creada.
+
+
+    2. Crea un usuario USRPRACTICA1 con el tablespace USERS por defecto y averigua que cuota se le ha asignado por defecto en el mismo. Sustitúyela por una cuota de 1M.
+
+
+CREATE USER USRPRACTICA1 IDENTIFIED BY PRACTICA DEFAULT TABLESPACE USERS;
+
+Por defecto, los usuarios de un tablespace no tienen quota asignada, por lo que debemos asignarle alguna cuota a dicho usuario
+
+
+--Vamos a ponerle una cuota al usuario usrpractica1
+ALTER USER USRPRACTICA1 quota 1M on USERS;
+
+
+SELECT * 
+FROM DBA_TS_QUOTAS 
+WHERE TABLESPACE_NAME='USERS'
+and USERNAME='USRPRACTICA1';
+
+TABLE USERNAME		BYTES  MAX_BYTES     BLOCKS MAX_BLOCKS DRO
+----- ------------ ---------- ---------- ---------- ---------- ---
+USERS USRPRACTICA1	    0	 1048576	  0	   128 NO
+
+El MAX_BYTES efectivamente son 1M
+
+
+--Para sustituirla por 1M
+ALTER USER USRPRACTICA1 quota 1M on USERS;
+
+    3. Modifica el usuario USRPRACTICA1 para que tenga cuota 0 en el tablespace SYSTEM.
+
+ALTER USER USRPRACTICA1 quota 0 on SYSTEM;
+
+    4. Concede a USRPRACTICA1 el ROLPRACTICA1.
+GRANT rolpractica1 to USRPRACTICA1;
+
+    5. Concede a USRPRACTICA1 el privilegio de crear tablas e insertar datos en el esquema de cualquier usuario. Prueba el privilegio. Comprueba si puede modificar la estructura o eliminar las tablas creadas.
+GRANT CREATE ANY TABLE to USRPRACTICA1;
+GRANT INSERT ANY TABLE TO USRPRACTICA1;
+
+--Vamos a probar el privilegio
+SQL> connect USRPRACTICA1/PRACTICA
+Conectado.
+
+Sesión modificada.
+
+Create table SCOTT.Prueba
+(
+Prueba Varchar2(10)
+  4  );
+
+Tabla creada.
+
+SQL> select * from cat;
+
+ninguna fila seleccionada
+
+--Vamos a ver si se creó en  el usuario SCOTT
+SQL> connect SCOTT/TIGER
+Conectado.
+
+Sesión modificada.
+
+SQL> select * from cat;
+
+TABLE_NAME
+--------------------------------------------------------------------------------
+TABLE_TYPE
+-----------
+DEPT
+TABLE
+
+EMP
+TABLE
+
+PRUEBA
+TABLE
+
+
+--Ahora vamos a probar el insert en dicha tabla
+SQL> connect USRPRACTICA1/PRACTICA
+Conectado.
+
+Sesión modificada.
+
+
+SQL> insert into SCOTT.Prueba values ('Hola');
+
+1 fila creada.
+
+
+--Y vamos a probar si puede borrar las tablas o updatear las filas
+drop table SCOTT.PRUEBA;
+                 *
+ERROR en línea 1:
+ORA-01031: privilegios insuficientes
+
+update SCOTT.Prueba
+set Prueba='1234'
+where Prueba='Hola';
+
+ERROR en línea 1:
+ORA-01031: privilegios insuficientes
+
+
+    6. Concede a USRPRACTICA1 el privilegio de leer la tabla DEPT de SCOTT con la posibilidad de que lo pase a su vez a terceros usuarios.
+
+grant select on SCOTT.DEPT to usrpractica1 with grant option;
+
+--Vamos a probar que puede ver la tabla
+SQL> connect usrpractica1/PRACTICA
+Conectado.
+
+Sesión modificada.
+
+SQL> select * from SCOTT.DEPT;
+
+    DEPTNO DNAME	  LOC
+---------- -------------- -------------
+	10 ACCOUNTING	  NEW YORK
+	20 RESEARCH	  DALLAS
+	30 SALES	  CHICAGO
+	40 OPERATIONS	  BOSTON
+
+
+--Vamos a ver si puede pasar el mismo privilegio a otros
+SQL> grant select on SCOTT.DEPT to alexrr;
+
+Concesión terminada correctamente.
+
+
+    7. Comprueba que USRPRACTICA1 puede realizar todas las operaciones previstas en el rol.
+
+--Conexión
+SQL> connect USRPRACTICA1/PRACTICA
+Conectado.
+
+Sesión modificada.
+
+--Vistas
+SQL> create view prueba as 
+select *
+from scott.dept;
+
+Vista creada.
+
+--Crear tablas
+
+SQL> create table hola
+(
+	hola varchar2(10)
+4 );
+
+Tabla creada.
+
+--Insertar datos en SCOTT.EMP
+SQL> INSERT INTO SCOTT.EMP VALUES(8001, 'Prueba1', 'CLERK', 7782,TO_DATE('23-ENE-1983', 'DD-MON-YYYY'), 1300, NULL, 10);
+
+1 fila creada.
+
+
+
+    8. Quita a USRPRACTICA1 el privilegio de crear vistas. Comprueba que ya no puede hacerlo.
+--Ya que el privilegio de crear vistas viene del rol rolpractica1 vamos a quitarle dicho privilegio
+revoke create view from rolpractica1;
+
+--Comprobación
+connect USRPRACTICA1/PRACTICA
+
+Create view prueba2
+as
+Select *
+FROM SCOTT.DEPT;
+	*
+ERROR en línea 1:
+ORA-01031: privilegios insuficientes
+
+
+
+    9. Crea un perfil NOPARESDECURRAR que limita a dos el número de minutos de inactividad permitidos en una sesión.
+
+    10. Activa el uso de perfiles en ORACLE.
+
+    11. Asigna el perfil creado a USRPRACTICA1 y comprueba su correcto funcionamiento.
+
+    12. Crea un perfil CONTRASEÑASEGURA especificando que la contraseña caduca mensualmente y sólo se permiten tres intentos fallidos para acceder a la cuenta. En caso de superarse, la cuenta debe quedar bloqueada indefinidamente.
+
+    13. Asigna el perfil creado a USRPRACTICA1 y comprueba su funcionamiento. Desbloquea posteriormente al usuario.
+
+    14. Consulta qué usuarios existen en tu base de datos.
+
+    15. Elige un usuario concreto y consulta qué cuota tiene sobre cada uno de los tablespaces.
+
+    16. Elige un usuario concreto y muestra qué privilegios de sistema tiene asignados.
+
+    17. Elige un usuario concreto y muestra qué privilegios sobre objetos tiene asignados.
+
+    18. Consulta qué roles existen en tu base de datos.
+
+    19. Elige un rol concreto y consulta qué usuarios lo tienen asignado.
+
+    20. Elige un rol concreto y averigua si está compuesto por otros roles o no.
+
+    21. Consulta qué perfiles existen en tu base de datos.
+
+    22. Elige un perfil y consulta qué límites se establecen en el mismo.
+
+    23. Muestra los nombres de los usuarios que tienen limitado el número de sesiones concurrentes.
+
+    24. Realiza un procedimiento que reciba un nombre de usuario y un privilegio de sistema y nos muestre el mensaje 'SI, DIRECTO' si el usuario tiene ese privilegio concedido directamente, 'SI, POR ROL' si el usuario tiene ese privilegio en alguno de los roles que tiene concedidos y un 'NO' si el usuario no tiene dicho privilegio.
+
+    25. Realiza un procedimiento llamado MostrarNumSesiones que reciba un nombre de usuario y muestre el número de sesiones concurrentes que puede tener abiertas como máximo y las que tiene abiertas realmente.

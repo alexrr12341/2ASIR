@@ -1,0 +1,39 @@
+CentOS
+------
+1- /etc/sysconfig/network-scripts/ifcfg-eth0
+
+2- yum update
+
+3- yum install epel-release
+   /etc/yum.repos.d/CentOS-Base.repo y ponemos enabled=1 en centOS plus
+
+4-yum provides "/usr/bin/dig"
+
+32:bind-utils-9.11.4-9.P2.el7.x86_64 : Utilities for querying DNS name servers
+Repositorio        : base
+Resultado obtenido desde:
+Nombre del archivo    : /usr/bin/dig
+
+yum install bind-utils
+
+5-uname -r
+3.10.0-1062.4.1.el7.x86_64
+
+cat /proc/version
+Linux version 3.10.0-1062.4.1.el7.x86_64 (mockbuild@kbuilder.bsys.centos.org) (gcc version 4.8.5 20150623 (Red Hat 4.8.5-39) (GCC) ) #1 SMP Fri Oct 18 17:15:30 UTC 2019
+
+Kernel instalados
+rpm -q kernel
+
+6-rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+yum install https://www.elrepo.org/elrepo-release-7.0-4.el7.elrepo.noarch.rpm
+
+7- Para observar los últimos kernels usamos yum --disablerepo="*" --enablerepo="elrepo-kernel" list available
+
+    yum --enablerepo=elrepo-kernel install kernel-ml
+
+[root@centosprueba centos]# uname -r
+5.3.9-1.el7.elrepo.x86_64
+
+8- ls -lh /boot/*5.3*
+

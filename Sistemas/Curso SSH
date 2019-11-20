@@ -1,0 +1,181 @@
+Apuntes SSH
+-----------
+
+Instalación del Entorno de pruebas->
+------------------------------------
+------------------------------------
+Crear un par de máquinas por vagrant
+apt install openssh-server
+
+Para verificar que tienes servidor ssh:
+systemctl status ssh ---- ps aux | grep sshd
+
+Utilización de SSH->
+--------------------
+--------------------
+Autentificación con usuario y contraseña:
+-----------------------------------------
+ssh usuario@192.168.1.77 -> Conectarse
+Mensajito de yes/no -> Es la huella de la clave pública del servidor, te pregunta si confias en ella porque no tienes idea de la clave pública del servidor
+
+ssh-keygen -l -E sha256 -f mv1.pub Para verificar si la clave pública es del servidor
+
+Se pueden ejecutar comandos de forma no interactiva:
+ssh usuario@192.168.1.77 whoami
+
+Para mandar varios comandos
+ssh usuario@192.168.1.77 'sudo apt update && sudo apt upgrade'
+
+Si queremos entrar como root:
+PermitRootLogin en /etc/ssh/sshd_config
+
+El mensaje de conexión es configurable: Print last log
+
+
+
+Autentificación clave pública:
+------------------------------
+Creamos clave pública y privada
+ssh-keygen -t ecdsa
+
+.pub es la clave pública
+
+Para pasar las claves:
+
+ssh-copy-id -i ~/.ssh/idprueba.pub usuario@192.168.1.77 y ahora no necesitaremos contraseña
+
+La clave pública se guarda en .ssh/authorized_keys
+
+Si metemos más de una clave pública si queremos entrar con una contraseña especifica
+ssh -i {clave} usuario@192.168.1.77
+
+Si queremos sacar la clave pública de nuestra clave privada
+ssh-keygen -y -f openwebinars >> openwebinars2.pub
+
+Para pasar nuestra clave pública a root vamos a /root/.ssh y creamos el fichero authorized_keys
+
+
+Autentificación claves pública y privadas con frases de paso:
+-------------------------------------------------------------
+ssh-keygen -t ecdsa
+
+Enter passphrase (empty for no passphrase): Aqui ponemos la frase de paso
+
+
+SSH-AGENT:
+----------
+variables de entorno
+env | grep SSH
+
+ssh-keygen -t rsa
+ssh-add ~/.ssh/agent AQUI GUARDAMOS LA FRASE DE PASO
+Comprobar identidades ssh-add -l
+Ya no te pedirá la frase de paso durante la sesión (gnome actua como ssh-agent)
+
+Si en un sistema no te deja ssh-agent hacemos
+ssh-agent /bin/bash
+Y hacemos el ssh-add
+
+Gestión de ficheros authorized_keys y known_hosts:
+--------------------------------------------------
+Vamos al directorio .ssh
+Authorized_keys: Es donde se guardan las claves públicas para que puedan acceder los clientes
+El formato es: Encriptación-ClavePública-Máquina
+Known_hosts: El cliente guarda información de los servidores a los que acceden mediante un hash que dicen ip y máquina
+Si queremos ver si hemos entrado en un determinado servidor
+ssh-keygen -F 192.168.1.77
+
+Si pasa lo típico de la autentificación sobre el known_hosts del warning, tenemos que borrar la configuración de nuestro known_host del servidor
+ssh-keygen -R 192.168.1.77
+
+Fordwarding:
+------------
+Si queremos saltar de una máquina a otra osea: Maquina mia->MV1->MV2
+
+Editamos el fichero de cliente /etc/ssh/ssh_config (sshd_config para servidor):
+Ponemos AllowAgentForwarding yes (servidor) / Forward Agent yes (cliente)
+
+X11Forwarding sirve para ejecutar aplicaciones gráficas remotamente
+Ponemos X11Forwarding yes (servidor) / ForwardX11 (cliente)
+
+Configuración de SSH->
+----------------------
+----------------------
+
+Configuración del cliente SSH:
+-----------------------------
+Vamos a /etc/ssh/sshd_config
+
+Send_env son las variables de entorno que se mandan al servidor	
+Hash_Knownhost sirve para que la máquina haga un hash en known_host
+GSSAPI es un metodo de autentificación de debian
+EscapeChar sirve para interrumpir la conexión de la máquina local del servidor
+GlobalKnownHostFile sirve para definir un known host de todos los usuarios ssh
+NumberOfPasswordPrompts numero de veces que puede fallar un usuario su contraseña
+StrictHostKeyChecking Cuando el usuario se conecte a un equipo y su equipo le devuelva su clave pública, (yes cierra conexion, ask pregunta mostrando el fingerprint, no se come cualquier clave pública)
+
+Host * puedes definir las cosas por equipo
+
+En nuestro directorio .ssh podemos configurar nuestra configuración editando un fichero config
+
+Parametro de configuración mediante parametros
+ssh -o "Forward Agent no" 192.168.*
+
+Configuración del servidor SSH:
+-------------------------------
+Ver directivas grep -v '^$\|^#' /etc/ssh/sshd_config
+sshd -T | less dice todas las directivas que usa ssh como servidor
+Port puedo especificar el puerto del servidor, sirve para quitarse los bots de ataques de fuerza bruta
+SyslogFacility nivel del log
+PermitRootLogin permitir que te puedas logear como root
+Subsystem sftp que se acepte el sftp
+AdressFamily inet/inet6 solo acceder por ipv4 o ipv6
+ListenAdress es que solo escuche un rango de direcciones
+
+Transferencia de Ficheros SSH->
+-------------------------------
+-------------------------------
+
+Scp:
+---
+scp {documentos} usuario@IP:{ruta} Enviar
+scp usuario@IP:{ruta} {ruta} Recibir
+scp usuario@IP:{ruta} usuario@IP:{Ruta} Enviar de un servidor a otro
+Copiar un directorio scp -r
+Si usamos el scp con clave publica scp autocompleta la ruta del servidor
+
+Sftp:
+----
+sftp usuario@192.168.1.77
+
+Es como un servidor ftp natural
+
+Tuneles SSH->
+-------------
+-------------
+Se puede usar para saltarnos un cortafuegos.
+
+Local Forwarding:
+En mi máquina local abro un puerto y establezco un tunel remoto por ssh que tiene conectividad con el servicio que quiero hacer
+apt install apache2 maquina virtual
+
+Si queremos acceder a la pagina web pero no tenemos acceso desde nuestra maquina abrimos un tunel hacia mv2
+ssh -f -L 1080:192.168.1.77:80 usuario@192.168.1.31 -N
+Si accedemos a 127.0.0.1:1080 en el navegador se mete a mv2, hacia mv1 y podemos ver la pagina
+
+Remote Forwarding:
+ssh -f -R 8080:localhost:80 usuario@192.168.1.77 -N
+
+Si queremos que demos acceso remoto a nuestros servidores web
+
+Forwarding Dinamico:
+ssh -D 8080 -f -C -q -N usuario@192.168.1.77	
+Y en firefox vamos a configuración,configuración manual y vamos al SOCKS
+Esto hace que la máquina que la que acceda sea la máquina que hemos puesto
+
+SSH en Windows->
+----------------
+----------------
+Windows no incluía sistema de cliente SSH, hasta que lo incluyó en 2018 nativamente.
+Putty es un proyecto de software libre para configurar nuestra conexión SSH en windows. Ponemos la máquina y nos sale el fingerprint. Sale una ventana, ponemos usuario y contraseña y ya estariamos en mv2
+Puedes usar claves públicas y privadas, tuneles, etc. Pero es mucho menos potente que el cliente nativo.

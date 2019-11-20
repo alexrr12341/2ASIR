@@ -1,0 +1,4 @@
+croqueta A 172.22.x.x
+croquetaint A 10.0.0.X
+mysql CNAME tortillaint
+www CNAME salmorejo

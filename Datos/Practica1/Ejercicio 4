@@ -1,0 +1,102 @@
+Instalamos el servicio SMTP->
+apt install postfix
+
+Utilizaremos en este caso un servidor smtp de babuino, añadimos en /etc/postfix/main.cft las siguientes lineas->
+relayhost = babuino-smtp.gonzalonazareno.org
+
+
+
+Utilizacion del paquete utl_mail de SQL->
+@$ORACLE_HOME/rdbms/admin/utlmail.sql
+
+@$ORACLE_HOME/rdbms/admin/prvtmail.plb
+
+grant execute on UTL_SMTP to alexrr;
+
+
+alter session set SMTP_OUT_SERVER='192.168.1.127';
+
+Reiniciamos la base de datos->
+shutdown immediate
+startup
+
+Damos permisos al usuario->
+grant execute on sys.UTL_TCP to alexrr;
+grant execute on sys.UTL_SMTP to alexrr;
+
+Habilitar ACLS al usuario alexrr->
+create or replace procedure añadir_acl
+is
+BEGIN
+  DBMS_NETWORK_ACL_ADMIN.CREATE_ACL(acl         => 'www.xml',
+                                    description => 'WWW ACL',
+                                    principal   => 'ALEXRR',
+                                    is_grant    => true,
+                                    privilege   => 'connect');
+ 
+  DBMS_NETWORK_ACL_ADMIN.ADD_PRIVILEGE(acl       => 'www.xml',
+                                       principal => 'ALEXRR',
+                                       is_grant  => true,
+                                       privilege => 'resolve');
+ 
+  DBMS_NETWORK_ACL_ADMIN.ASSIGN_ACL(acl  => 'www.xml',
+                                    host => 'babuino-smtp.gonzalonazareno.org');
+END;
+/
+COMMIT;
+
+create or replace procedure enviar_correo(p_envia IN VARCHAR2, p_recibe IN VARCHAR2, p_asunto IN VARCHAR2, p_mensaje IN VARCHAR2, p_host IN VARCHAR2) 
+IS 
+  mailhost     VARCHAR2(80) := ltrim(rtrim(p_host)); 
+  mail_conn    utl_smtp.connection;  
+   
+  crlf VARCHAR2( 2 ):= CHR( 13 ) || CHR( 10 ); 
+  mesg VARCHAR2( 1000 ); 
+BEGIN 
+  mail_conn := utl_smtp.open_connection(mailhost, 25); 
+  mesg:= 'Date: ' || TO_CHAR( SYSDATE, 'dd Mon yy hh24:mi:ss' ) || crlf || 
+         'From:  <'||p_envia||'>' || crlf || 
+         'Subject: '||p_asunto|| crlf || 
+         'To: '||p_recibe || crlf || 
+         '' || crlf || p_mensaje; 
+ 
+  utl_smtp.helo(mail_conn, mailhost); 
+  utl_smtp.mail(mail_conn, p_envia);  
+  utl_smtp.rcpt(mail_conn, p_recibe); 
+  utl_smtp.data(mail_conn, mesg);   
+  utl_smtp.quit(mail_conn);         
+END; 
+/
+
+4.Realiza un trigger que cada vez que se inserte un concierto perteneciente a una temporada compruebe
+que la fecha del mismo está dentro de la temporada especificada. Si no es así, se informará por correo
+electrónico a la dirección de correo administradorauditoriogn@gmail.com.
+
+Create or replace function ComprobarTemporada(p_fecha conciertos.fechahora%type)
+return varchar2
+is
+	v_temporada varchar2(20);
+begin
+	if p_fecha between to_date('03/21','MM/DD') and to_date('06/21','MM/DD') then
+		v_temporada:='primavera';
+	elsif p_fecha between to_date('06/22','MM/DD') and to_date('09/21','MM/DD') then
+		v_temporada:='verano';
+	else
+		v_temporada:='otoño/invierno';
+	end if;
+	return v_temporada;		
+end;
+/
+
+Create or replace trigger comprobarfechas
+before insert on conciertos
+for each row
+declare
+	v_temporada conciertos.temporada%type;
+begin
+	v_temporada:=ComprobarTemporada(:new.fechahora);	
+	if v_temporada != :new.temporada then
+		enviar_correo('alexrodriguezrojas@gonzalonazareno.org','administradorauditoriogn@gmail.com','Fallo de temporada','Alguien ha realizado un fallo de temporada al insertarla','192.168.1.127');
+	end if;
+end;
+/

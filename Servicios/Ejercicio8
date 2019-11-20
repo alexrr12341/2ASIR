@@ -1,0 +1,58 @@
+Tarea 7 (1 punto): Autentificación básica. Limita el acceso a la URL departamentos.iesgn.org/secreto. Comprueba las cabeceras de los mensajes HTTP que se intercambian entre el servidor y el cliente. ¿Cómo se manda la contraseña entre el cliente y el servidor?. Entrega una breve explicación del ejercicio.
+
+Creamos la carpeta secreto en departamentos
+<pre>
+mkdir /srv/www/departamentos/secreto
+</pre>
+
+Vamos a la configuración de departamento y añadimos las siguientes líneas:
+
+<pre>
+location /secreto {
+                auth_basic      "Acceso restringido";
+                auth_basic_user_file    "/etc/nginx/claves/htpasswd";
+        }
+</pre>
+
+Y hacemos el fichero htpassword
+
+<pre>
+mkdir /etc/nginx/claves
+
+sudo sh -c "echo -n 'usuario:' >> /etc/nginx/claves/htpasswd"
+sudo sh -c "openssl passwd -apr1 >> /etc/nginx/claves/htpasswd"
+</pre>
+
+Y ya debería funcionar:
+
+!imagenht.png!
+!imagenht2.png!
+
+*Tarea 8 (1 punto): Cómo hemos visto la autentificación básica no es segura, modifica la autentificación para que sea del tipo digest, y sólo sea accesible a los usuarios pertenecientes al grupo directivos. Comprueba las cabeceras de los mensajes HTTP que se intercambian entre el servidor y el cliente. ¿Cómo funciona esta autentificación?*
+
+En nuestro fichero de configuración de departamentos modificamos las siguientes líneas:
+
+<pre>
+location /secreto {
+                auth_digest     "directivo";
+                auth_digest_user_file   "/etc/nginx/claves/htdigest";
+        }
+
+</pre>
+
+Clonamos el siguiente git para poder hacer nuestro htdigest
+<pre>
+git clone https://github.com/atomx/nginx-http-auth-digest.git
+apt install build-essencial
+</pre>
+
+Ahora tenemos que coger el nginx sources (la versión de debian buster es la 1.14.2) de aqui http://nginx.org/en/download.html
+<pre>
+tar zxvf nginx-1.14.2.tar.gz
+sudo apt install zlib1g-dev libpcre3-dev
+./configure --add-module=../nginx-http-auth-digest
+make
+sudo make install
+</pre>
+
+

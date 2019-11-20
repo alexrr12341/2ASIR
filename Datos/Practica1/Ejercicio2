@@ -1,0 +1,226 @@
+2. Realizar un procedimiento llamado MostrarInformes que recibirá tres parámetros. El primero determinará el tipo de informe que queremos obtener y los otros dos dependerán del tipo de informe.
+
+CREATE FUNCTION NombreCaballo(p_CodCaballo caballos.CodCaballo%type)
+returns varchar as $$
+DECLARE
+	v_mess VARCHAR(60);
+BEGIN
+	SELECT CONCAT('Caballo: ',Nombre) into v_mess
+	from caballos
+	where CodCaballo = p_CodCaballo;
+	RETURN v_mess;
+END;
+$$ language plpgsql;
+
+
+CREATE FUNCTION NombreJockey(p_DNI jockeys.DNI%type)
+returns varchar as $$
+DECLARE
+	v_mess VARCHAR(60);
+BEGIN
+	SELECT CONCAT('Jockey: ',Nombre) into v_mess
+	from jockeys
+	where DNI = p_DNI;
+	RETURN v_mess;
+END;
+$$ language plpgsql;
+
+
+
+CREATE OR REPLACE FUNCTION Tantoporuno(p_CodPart participaciones.CodPart%type)
+returns varchar as $$
+DECLARE
+	v_mess VARCHAR(60);
+BEGIN
+	SELECT CONCAT('Tanto por Uno: ',TantoAUno) into v_mess
+	from apuestas
+	where CodPart= p_CodPart;
+	RETURN v_mess;
+END;
+$$ language plpgsql;
+
+
+CREATE FUNCTION NumVictorias(p_CodCaballo caballos.CodCaballo%type)
+returns varchar as $$
+DECLARE
+	v_mess VARCHAR(60);
+BEGIN
+	SELECT CONCAT('Numero de Victorias: ',Count(*)) into v_mess
+	from participaciones
+	where CodCaballo = p_CodCaballo
+	AND PosicionFinal = 1;
+	RETURN v_mess;
+END;
+$$ language plpgsql;
+
+
+CREATE FUNCTION UltimaParticipacion(p_CodCaballo caballos.CodCaballo%type)
+returns varchar as $$
+DECLARE
+	v_mess 	VARCHAR(60);
+	v_fecha timestamp;
+BEGIN
+	select MAX(c.Fecha) into v_fecha
+	from participaciones p, carreras c
+	where p.CodCaballo = p_CodCaballo
+	AND p.CodCarrera = c.CodCarrera;
+
+	v_mess := CONCAT('Ultima Participacion: ',TO_CHAR(v_fecha,'DD/MM/YY'));
+	RETURN v_mess;
+END;
+$$ language plpgsql;
+
+CREATE FUNCTION UltimaPosicion(p_CodCaballo caballos.CodCaballo%type)
+returns varchar as $$
+DECLARE
+	v_mess 	VARCHAR(60);
+	v_fecha Timestamp;
+BEGIN
+	select MAX(c.Fecha) into v_fecha
+	from participaciones p, carreras c
+	where p.CodCaballo = p_CodCaballo
+	AND p.CodCarrera = c.CodCarrera;
+
+	SELECT CONCAT('Posicion: ',p.PosicionFinal) into v_mess
+	from participaciones p, carreras c
+	where p.CodCaballo = p_CodCaballo
+	AND c.Fecha = v_fecha
+	AND c.CodCarrera = p.CodCarrera;
+	RETURN v_mess;
+END;
+$$ language plpgsql;
+
+
+
+CREATE or replace FUNCTION MostrarClasificacion(p_Cod carreras.Codcarrera%type)
+returns void as $$
+DECLARE
+	c_part CURSOR FOR
+	select *
+	from participaciones
+	where CodCarrera = p_Cod
+	order by PosicionFinal;
+
+	v_NomCab caballos.Nombre%type;
+	v_NomJok jockeys.Nombre%type;
+	v_todo text;
+BEGIN
+	RAISE NOTICE 'Clasificación:';
+	for v_part in c_part loop
+		select Nombre into v_NomCab 
+		from caballos 
+		where CodCaballo = v_part.CodCaballo;
+
+		select Nombre into v_NomJok 
+		from jockeys 
+		where DNI = v_part.DNI;
+
+		Raise Notice '%      %      %',v_part.PosicionFinal,v_NomCab,v_NomJok;
+	end loop;
+END;
+$$ language plpgsql;
+
+
+
+CREATE FUNCTION Informe1 (p_Fecha VARCHAR)
+returns void as $$
+DECLARE
+	c_carr CURSOR FOR
+	select ImportePremio,CodCarrera,Fecha,Hora
+	from carreras
+	where TO_CHAR(Fecha, 'DD/MM/YY') = p_Fecha;
+
+	v_Fecha date;
+BEGIN
+	v_Fecha := TO_DATE(p_Fecha, 'DD/MM/YY');
+	Raise Notice 'Fecha: % de % de %',to_char (v_Fecha,'DD'),to_char(v_Fecha,'MONTH'),to_char (v_Fecha,'YYYY');
+	for v_carr in c_carr loop
+		Raise Notice 'Hora: %             Importe Premio: %',to_char(v_carr.Hora, 'HH:MI'),v_carr.ImportePremio;
+		perform MostrarClasificacion(v_carr.CodCarrera);
+	end loop;
+END;
+$$ language plpgsql;
+
+CREATE OR REPLACE FUNCTION Informe2 (p_CodCarrera carreras.CodCarrera%type)
+returns void as $$
+DECLARE
+	c_carrera CURSOR FOR
+	select *
+	from carreras
+	where CodCarrera = p_CodCarrera;
+BEGIN
+	for race in c_carrera loop
+		Raise Notice 'Código Carrera: %',p_CodCarrera;
+		Raise Notice 'Fecha: %  de %  de %',to_char(race.Fecha,'DD'),to_char(race.Fecha,'MONTH'),to_char(race.Fecha,'YYYY');
+		Raise Notice 'Hora: %',to_char(race.Hora, 'HH:MI');
+		Raise Notice 'Importe Premio: %         Límite Apuesta: %',race.ImportePremio,race.LimiteApuesta;
+		Raise Notice 'Caballos nacidos de % a %',to_char(race.FechaNacMin,'DD/MM/YYYY'),to_char(race.FechaNacMax,'DD/MM/YYYY');
+		perform MostrarClasificacion(p_CodCarrera);
+	end loop;
+END;
+$$ language plpgsql;
+
+Create or replace FUNCTION MostrarInforme3 (p_CodCarrera carreras.CodCarrera%type,v_fecha carreras.Fecha%type,v_Limite carreras.LimiteApuesta%type,v_fechahora carreras.Hora%type)
+returns void as $$
+DECLARE
+BEGIN
+	Raise Notice '################';
+	Raise Notice 'Código Carrera: %',p_CodCarrera;
+	Raise Notice 'Fecha: % de % de %',to_char(v_fecha,'DD'),to_char(v_fecha,'MONTH'),to_char(v_fecha,'YYYY');
+	Raise Notice 'Hora: %     Limite apuesta: %',to_char(v_fechahora, 'HH:MI'),v_Limite;
+	
+	Raise Notice '################';
+	Raise Notice '>> Caballos Participantes: ';
+END;
+$$ language plpgsql;
+
+
+CREATE OR REPLACE FUNCTION Informe3 (p_CodCarrera carreras.CodCarrera%type)
+returns void as $$
+DECLARE
+	v_Fecha carreras.Fecha%type;
+	v_Limite carreras.LimiteApuesta%type;
+	v_FechaHora carreras.Hora%type;
+
+	c_part CURSOR FOR
+	select codcaballo,dni,codpart
+	from participaciones
+	where CodCarrera = p_CodCarrera;
+
+BEGIN
+	select Fecha,Hora,LimiteApuesta into v_Fecha,v_FechaHora,v_Limite
+	from carreras
+	where CodCarrera = p_CodCarrera;
+	perform MostrarInforme3(p_CodCarrera,v_fecha,v_Limite,v_FechaHora);
+	FOR part in c_part loop
+		Raise Notice '-----------------------';
+		Raise Notice '.... %',NombreCaballo(part.codcaballo);
+		Raise Notice '.... %',NombreJockey(part.dni);
+		Raise Notice '.... %',Tantoporuno(part.codpart); 
+		Raise Notice '.... %',NumVictorias(part.codcaballo);
+		Raise Notice '.... %',UltimaParticipacion(part.codcaballo);
+		Raise Notice '.... %',UltimaPosicion(part.codcaballo);
+	END loop;
+END;
+$$ language plpgsql;
+
+
+CREATE OR REPLACE FUNCTION MostrarInforme (p_Tipo NUMERIC, p_Fecha VARCHAR, p_CodCarrera carreras.CodCarrera%type)
+returns void as $$
+DECLARE
+BEGIN
+	CASE
+		WHEN p_Tipo = 1 AND p_Fecha IS NOT NULL THEN
+			perform Informe1(p_Fecha);
+		WHEN p_Tipo = 2 AND p_CodCarrera IS NOT NULL THEN
+			perform Informe2(p_CodCarrera);
+		WHEN p_Tipo = 3 AND p_CodCarrera IS NOT NULL THEN
+			perform Informe3(p_CodCarrera);
+	END CASE;
+END;
+$$ language plpgsql;
+
+
+select MostrarInforme(1,'18/11/18',NULL);
+select MostrarInforme(2,NULL,'08');
+select MostrarInforme(3,NULL,'10');

@@ -1,0 +1,72 @@
+Paso 1)
+Create or replace package PkgZonasRiegos
+as
+	TYPE tZonRiegos is RECORD
+	(
+		CodVivero Viveros.Codigo%type,
+		CodZona Zonas.Codigo%type,
+		Fecha RiegosPorZona.FechaMasHora%type
+	);
+	TYPE tRiegosZonas is table of tZonRiegos
+	index by binary_integer;
+	vTabRiegos tRiegosZonas;
+end;
+/
+
+
+--Creamos un trigger que recoja en un cursor la información que necesitamos.
+
+Create or replace trigger RellenarHorasZonas
+before insert on RiegosPorZona
+declare
+	cursor c_horas is
+	Select Cod_Vivero,Cod_Zona,FechaMasHora
+	from RiegosPorZona;
+	i number:=0;
+begin
+	PkgZonasRiegos.vTabRiegos.delete;
+	for v_horas in c_horas loop
+		PkgZonasRiegos.vTabRiegos(i).CodZona:=v_horas.Cod_Zona;
+		PkgZonasRiegos.vTabRiegos(i).CodVivero:=v_horas.Cod_Vivero;
+		PkgZonasRiegos.vTabRiegos(i).Fecha:=v_horas.FechaMasHora;
+		i:=i+1;
+	end loop;
+end;
+/
+
+
+Create or replace procedure ActualizarTablaRiegos(p_codvivero RiegosPorZona.Cod_Vivero%type,p_codzona RiegosPorZona.Cod_Zona%type,p_fecha RiegosPorZona.FechaMasHora%type)
+is
+begin
+	PkgZonasRiegos.vTabRiegos(PkgZonasRiegos.vTabRiegos.LAST+1).CodZona:=p_codzona;
+	PkgZonasRiegos.vTabRiegos(PkgZonasRiegos.vTabRiegos.LAST).CodVivero:=p_codvivero;
+	PkgZonasRiegos.vTabRiegos(PkgZonasRiegos.vTabRiegos.LAST).Fecha:=p_fecha;
+end;
+/
+
+
+Create or replace procedure ComprobarFecha8Horas(p_fecha RiegosPorZona.FechaMasHora%type,p_fechaMutante RiegosPorZona.FechaMasHora%type)
+is
+	v_fecharesta number;
+begin
+	v_fecharesta:=trunc(abs((p_fecha-p_fechaMutante)*24));
+	if v_fecharesta <8 then
+		raise_application_error(-20001,'El tiempo entre un riego y otro no supera las 8 horas');
+	end if;
+end;
+/
+	
+
+Create or replace trigger ControlarRiegosMayor8H
+before insert on RiegosPorZona
+for each row
+declare
+begin
+	for i in PkgZonasRiegos.vTabRiegos.FIRST..PkgZonasRiegos.vTabRiegos.LAST loop
+		if PkgZonasRiegos.vTabRiegos(i).CodVivero=:new.Cod_Vivero and PkgZonasRiegos.vTabRiegos(i).CodZona=:new.Cod_Zona then
+			ComprobarFecha8Horas(:new.FechaMasHora,PkgZonasRiegos.vTabRiegos(i).Fecha);
+		end if;
+	end loop;
+	ActualizarTablaRiegos(:new.Cod_Vivero,:new.Cod_Zona,:new.FechaMasHora);
+end;
+/

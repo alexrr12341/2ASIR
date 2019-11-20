@@ -1,0 +1,85 @@
+
+1.    Permite poder hacer conexiones ssh al exterior.
+<pre>
+iptables -A OUTPUT -o eth0 -p tcp --dport 22 -j ACCEPT
+iptables -A INPUT -i eth0 -p tcp --sport 22 -j ACCEPT
+
+
+root@maquina:/home/debian# ssh debian@172.22.200.20
+debian@172.22.200.20's password: 
+</pre>
+2.    Deniega el acceso a tu servidor web desde una ip concreta.
+<pre>
+iptables -I INPUT -i eth0 -s 172.22.200.209 -p tcp --dport 80 -j DROP
+iptables -I OUTPUT -o eth0 -d 172.22.200.209 -p tcp --sport 80 -j DROP
+
+
+w3m 172.22.201.5
+
+Opening socket...
+
+</pre>
+3.    Permite hacer consultas DNS sólo al servidor 192.168.202.2. Comprueba que no puedes hacer un dig @1.1.1.1.
+<pre>
+iptables -I OUTPUT -o eth0 -p udp --dport 53 -j DROP
+iptables -I INPUT -i eth0 -p udp --sport 53 -j DROP
+iptables -I INPUT -s 192.168.202.2 -p udp --dport 53 -j ACCEPT
+iptables -I OUTPUT -d 192.168.202.2 -p udp --sport 53 -j ACCEPT
+</pre>
+
+<pre>
+dig @192.168.202.2 www.josedomingo.org
+
+; <<>> DiG 9.11.5-P4-5.1-Debian <<>> @192.168.202.2 www.josedomingo.org
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 38634
+;; flags: qr rd ra; QUERY: 1, ANSWER: 2, AUTHORITY: 5, ADDITIONAL: 6
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 4096
+; COOKIE: 6eeb06fa24b90b961a66f67a5dd3d40196e75223f487bfd1 (good)
+;; QUESTION SECTION:
+;www.josedomingo.org.		IN	A
+
+;; ANSWER SECTION:
+www.josedomingo.org.	822	IN	CNAME	playerone.josedomingo.org.
+playerone.josedomingo.org. 822	IN	A	137.74.161.90
+
+;; AUTHORITY SECTION:
+josedomingo.org.	70480	IN	NS	ns4.cdmondns-01.org.
+josedomingo.org.	70480	IN	NS	ns3.cdmon.net.
+josedomingo.org.	70480	IN	NS	ns1.cdmon.net.
+josedomingo.org.	70480	IN	NS	ns5.cdmondns-01.com.
+josedomingo.org.	70480	IN	NS	ns2.cdmon.net.
+
+;; ADDITIONAL SECTION:
+ns1.cdmon.net.		156880	IN	A	35.189.106.232
+ns2.cdmon.net.		156880	IN	A	35.195.57.29
+ns3.cdmon.net.		156880	IN	A	35.157.47.125
+ns4.cdmondns-01.org.	70480	IN	A	52.58.66.183
+ns5.cdmondns-01.com.	156880	IN	A	52.59.146.62
+
+;; Query time: 1 msec
+;; SERVER: 192.168.202.2#53(192.168.202.2)
+;; WHEN: Tue Nov 19 11:37:37 UTC 2019
+;; MSG SIZE  rcvd: 322
+
+
+dig @1.1.1.1 www.josedomingo.org
+
+; <<>> DiG 9.11.5-P4-5.1-Debian <<>> @1.1.1.1 www.josedomingo.org
+; (1 server found)
+;; global options: +cmd
+;; connection timed out; no servers could be reached
+
+</pre>
+4.    No permitir el acceso al servidor web de www.josedomingo.org (Tienes que utilizar la ip). ¿Puedes acceder a fp.josedomingo.org?
+<pre>
+iptables -I INPUT -s 137.74.161.90 -p tcp --sport 443 -j DROP
+iptables -I OUTPUT -d 137.74.161.90 -p tcp --dport 443 -j DROP
+</pre>
+5.    Permite mandar un correo usando nuestro servidor de correo: babuino-smtp. Para probarlo ejecuta un telnet bubuino-smtp.gonzalonazareno.org 25.
+6.    Instala un servidor mariadb, y permite los accesos desde la ip de tu cliente. Comprueba que desde otro cliente no se puede acceder.
+

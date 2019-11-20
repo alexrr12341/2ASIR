@@ -1,0 +1,173 @@
+8.Realiza los módulos de programación necesarios para evitar que un propietario apueste por un caballo que no sea
+de su propiedad si en esa misma carrera corre algún caballo suyo
+
+En el package cogemos el NIf y la participación en la que está apostando.
+
+Detectar que esa apuesta es de un propietario
+
+Observar en la tabla participaciones cual es la carrera y el caballo al que apuesta.
+
+Observar los caballos que corren en esa carrera.
+
+Detectar que en esa carrera está su caballo.
+
+Si no apuesta por ese caballo, raise_application_error.
+
+
+
+Create or replace package PkgClientesApuestas
+as
+	TYPE tApuestasprop is RECORD
+	(
+		DNI_Cliente apuestas.DNI%type,
+		Cod_Participacion apuestas.CodPart%type,
+		Propietario number
+	);
+	TYPE tApuestasCaballos is table of tApuestasprop
+	index by binary_integer;
+	vTabApuestas tApuestasCaballos;
+end;
+/
+
+
+Create or replace function DetectarPropietario(p_dni apuestas.dni%type)
+return number
+is
+	v_propietario number:=0;
+	cursor c_propietarios is
+	select NIF
+	from propietarios;
+begin
+	for v_propietarios in c_propietarios loop
+		if p_dni=v_propietarios.NIF then
+			v_propietario:=1;
+		end if;
+	end loop;
+	return v_propietario;
+end;
+/
+
+Create or replace trigger RellenarApuestas
+before insert on apuestas 
+declare
+	cursor c_apuestas is
+	select DNI,CodPart
+	from apuestas;
+	i number:=0;
+	v_propietario number;
+begin
+	PkgCaballosCarrerasProp.vTabApuestas.delete;
+	for v_apuestas in c_apuestas loop
+		PkgClientesApuestas.vTabApuestas(i).DNI_Cliente:=v_apuestas.DNI;
+		PkgClientesApuestas.vTabApuestas(i).Cod_Participacion:=v_apuestas.CodPart;
+		v_propietario:=DetectarPropietario(v_apuestas.DNI);
+		PkgClientesApuestas.vTabApuestas(i).Propietario:=v_propietario;
+		i:=i+1;
+	end loop;
+end;
+/
+
+Create or replace function SacarCaballoProp(p_dni participaciones.DNI%type,p_caballo participaciones.CodCaballo%type)
+return number
+is
+	v_caballosi number:=0;
+	v_caballo varchar2(10);
+begin
+	Select CodCaballo into v_caballo
+	from Caballos
+	where CodCaballo in (Select CodCaballo
+			     from Propietarios
+			     where NIF=p_dni)
+	and CodCaballo=p_caballo;
+	if v_caballo is not null then
+		v_caballosi := 1;
+	end if;
+	return v_caballosi;
+end;
+/
+
+Create or replace function SacarCaballo(p_dni participaciones.DNI%type,p_caballo participaciones.CodCaballo%type)
+return caballos.CodCaballo%type
+is
+	v_caballo caballos.CodCaballo%type;
+begin
+	Select CodCaballo into v_caballo
+	from Caballos
+	where CodCaballo in (Select CodCaballo
+			     from Propietarios
+			     where NIF=p_dni)
+	and CodCaballo=p_caballo;
+	return v_caballo;
+end;
+/
+
+Create or replace procedure ComprobarExcepcionApuestas(p_dni participaciones.DNI%type,p_caballo caballos.CodCaballo%type,p_codpart participaciones.CodPart%type)
+is
+	v_codcaballo participaciones.CodCaballo%type;
+begin
+	Select CodCaballo into v_codcaballo
+	from participaciones
+	where DNI=p_dni
+	and CodPart=p_codpart;
+	if v_codcaballo != p_caballo then
+		raise_application_error(-20001,'Propietario apuesta en carrera por caballo que no es suyo');
+	end if;
+end;
+/
+
+Create or replace procedure ComprobarCaballos(p_carrera participaciones.CodCarrera%type,p_dni apuestas.DNI%type,p_codpart apuestas.codpart%type)
+is
+	cursor c_caballo is
+	Select *
+	from participaciones
+	where CodCarrera=p_carrera;
+	v_caballoprop number:=0;
+	v_caballodelprop caballos.CodCaballo%type;
+begin
+	for v_caballo in c_caballo loop
+		v_caballoprop:=SacarCaballoProp(p_dni,v_caballo.CodCaballo);
+	end loop;
+	if v_caballoprop = 1 then
+		for v_caballo in c_caballo loop
+			v_caballodelprop:=SacarCaballo(p_dni,v_caballo.CodCaballo);
+		end loop;
+	ComprobarExcepcionApuestas(p_dni,v_caballodelprop,p_codpart);	
+	end if;
+end;
+/
+
+Create or replace procedure AnalizarCarrera(p_dni apuestas.DNI%type,p_codpart apuestas.codpart%type)
+is
+	
+	v_carrera participaciones.codcarrera%type;
+begin
+	Select CodCarrera into v_carrera
+	from participaciones
+	where codpart=p_codpart;
+	ComprobarCaballos(v_carrera,p_dni,p_codpart);
+end;
+/
+
+Create or replace procedure ActualizarTablaApuestas(p_DNI participaciones.DNI%type,p_codpart participaciones.codpart%type,p_prop number)
+is
+begin
+	PkgClientesApuestas.vTabApuestas(PkgClientesApuestas.vTabApuestas.LAST+1).DNI_Cliente:=p_DNI;
+	PkgClientesApuestas.vTabApuestas(PkgClientesApuestas.vTabApuestas.LAST).Cod_Participacion:=p_codpart;
+	PkgClientesApuestas.vTabApuestas(PkgClientesApuestas.vTabApuestas.LAST).Propietario:=p_prop;
+end;
+/
+
+Create or replace trigger ControlarCaballosPropietarios
+before insert on apuestas
+for each row
+declare
+	v_prop number:=DetectarPropietario(:new.DNI);
+begin
+	for i in PkgClientesApuestas.vTabApuestas.FIRST..PkgClientesApuestas.vTabApuestas.LAST loop
+		if PkgClientesApuestas.vTabApuestas(i).Propietario = 1 and PkgClientesApuestas.vTabApuestas(i).DNI_Cliente=:new.DNI then
+			AnalizarCarrera(:new.DNI,:new.CodPart);
+		end if;
+	end loop;
+	ActualizarTablaApuestas(:new.DNI,:new.CodPart,v_prop);
+end;
+/
