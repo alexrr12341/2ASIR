@@ -25,7 +25,7 @@ iptables -I OUTPUT -o eth0 -p udp --dport 53 -j DROP
 iptables -I INPUT -i eth0 -p udp --sport 53 -j DROP
 iptables -I INPUT -s 192.168.202.2 -p udp --dport 53 -j ACCEPT
 iptables -I OUTPUT -d 192.168.202.2 -p udp --sport 53 -j ACCEPT
-</pre>
+</pre>s
 
 <pre>
 dig @192.168.202.2 www.josedomingo.org
@@ -79,7 +79,13 @@ dig @1.1.1.1 www.josedomingo.org
 <pre>
 iptables -I INPUT -s 137.74.161.90 -p tcp --sport 443 -j DROP
 iptables -I OUTPUT -d 137.74.161.90 -p tcp --dport 443 -j DROP
+
+debian@maquina:~$ w3m fp.josedomingo.org
+w3m: Can't load fp.josedomingo.org.
 </pre>
+
+No puedo acceder ya que fp y www tienen la misma IP
 5.    Permite mandar un correo usando nuestro servidor de correo: babuino-smtp. Para probarlo ejecuta un telnet bubuino-smtp.gonzalonazareno.org 25.
+
 6.    Instala un servidor mariadb, y permite los accesos desde la ip de tu cliente. Comprueba que desde otro cliente no se puede acceder.
 

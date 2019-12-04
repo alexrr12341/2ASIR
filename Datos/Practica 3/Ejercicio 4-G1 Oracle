@@ -1,0 +1,47 @@
+
+4. (ORACLE, Postgres) Realiza un procedimiento que reciba un nombre de usuario y nos muestre cuántas sesiones tiene abiertas en este momento. Además, para cada una de dichas sesiones nos mostrará la hora de comienzo y el nombre de la máquina, sistema operativo y programa desde el que fue abierta.
+
+
+Create or replace procedure MostrarExcepciones(p_user varchar2)
+is
+	v_existe number(1):=0;
+begin
+	Select count(*) into v_existe
+	from dba_users
+	where USERNAME=p_user;
+	if v_existe=0 then
+		raise_application_error(-20001,'Ese usuario no existe');
+	end if;
+end;
+/
+
+--El nombre del sistema operativo no está disponible para buscar en Oracle, lo máximo que se puede hacer es buscar el usuario del sistema que está usando, pero no su sistema operativo.
+
+Create or replace procedure MostrarSesiones(p_user varchar2)
+is
+	cursor c_sesiones is
+	select MACHINE as maquina,to_char(LOGON_TIME,'YYYY/MM/DD HH24:MI') as comienzo,program as programa
+	from v$session 
+	where USERNAME=p_user;
+	v_contador number(2):=1;
+begin
+	for v_sesiones in c_sesiones loop
+		dbms_output.put_line('Sesion '||v_contador||'->');
+		dbms_output.put_line('Hora de comienzo: '||v_sesiones.comienzo);
+		dbms_output.put_line('El nombre de su máquina es: '||v_sesiones.maquina);
+		dbms_output.put_line('El nombre del programa es: '||v_sesiones.programa);
+		v_contador:=v_contador+1;
+	end loop;
+end;
+/
+
+Create or replace procedure ExaminarConexiones(p_user varchar2)
+is
+begin
+	dbms_output.put_line('Usuario: '||p_user);
+	dbms_output.put_line('------------------');
+	MostrarExcepciones(p_user);
+	MostrarSesionesAbiertas(p_user);
+	MostrarSesiones(p_user);
+end;
+/

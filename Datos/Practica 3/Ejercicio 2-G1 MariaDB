@@ -1,0 +1,60 @@
+(ORACLE, Postgres, MySQL) Escribe una consulta que obtenga un script para quitar el privilegio de borrar registros en alguna tabla de SCOTT a los usuarios que lo tengan.
+
+--Creamos las tablas en la base de datos scott
+CREATE TABLE scott.DEPT
+(
+ DEPTNO NUMERIC(2),
+ DNAME VARCHAR(14),
+ LOC VARCHAR(13),
+ CONSTRAINT PK_DEPT PRIMARY KEY (DEPTNO)
+);
+
+CREATE TABLE scott.EMP
+(
+ EMPNO NUMERIC(4),
+ ENAME VARCHAR(10),
+ JOB VARCHAR(9),
+ MGR NUMERIC(4),
+ HIREDATE TIMESTAMP,
+ SAL NUMERIC(7, 2),
+ COMM NUMERIC(7, 2),
+ DEPTNO NUMERIC(2),
+ CONSTRAINT FK_DEPTNO FOREIGN KEY (DEPTNO) REFERENCES DEPT (DEPTNO),
+ CONSTRAINT PK_EMP PRIMARY KEY (EMPNO)
+);
+
+
+--Ahora vamos a crear el SCRIPT
+
+
+--Si se han dado a una sola tabla el script sería este:
+
+Select concat('REVOKE DELETE ON ',table_schema,'.',table_name,' from ',grantee,';') as script
+from information_schema.table_privileges
+where table_schema='scott'
+and privilege_type='DELETE';
+
++-----------------------------------------------+
+| script                                        |
++-----------------------------------------------+
+| REVOKE DELETE ON scott.DEPT from 'SCOTT'@'%'; |
+| REVOKE DELETE ON scott.EMP from 'SCOTT'@'%';  |
++-----------------------------------------------+
+2 rows in set (0.00 sec)
+
+
+
+--Si se han dado en toda la base de datos de scott  el script sería este:
+
+select concat('REVOKE DELETE ON scott.* from ',user,';') as script_revoke
+from mysql.db 
+where db='scott' 
+and DELETE_PRIV = 'Y';
+
++--------------------------------------+
+| script_revoke                        |
++--------------------------------------+
+| REVOKE DELETE ON scott.* from SCOTT; |
++--------------------------------------+
+1 row in set (0.00 sec)
+

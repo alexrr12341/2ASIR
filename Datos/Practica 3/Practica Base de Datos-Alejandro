@@ -54,9 +54,9 @@ INSERT INTO SCOTT.EMP VALUES(8000, 'Prueba', 'CLERK', 7782,TO_DATE('23-ENE-1983'
     2. Crea un usuario USRPRACTICA1 con el tablespace USERS por defecto y averigua que cuota se le ha asignado por defecto en el mismo. Sustitúyela por una cuota de 1M.
 
 
-CREATE USER USRPRACTICA1 IDENTIFIED BY PRACTICA DEFAULT TABLESPACE USERS;
+CREATE USER USRPRACTICA2 IDENTIFIED BY PRACTICA DEFAULT TABLESPACE USERS;
 
-Por defecto, los usuarios de un tablespace no tienen quota asignada, por lo que debemos asignarle alguna cuota a dicho usuario
+Por defecto, los usuarios de un tablespace no tienen quota asignada,por lo que no pueden insertar datos,por lo que debemos asignarle alguna cuota a dicho usuario
 
 
 --Vamos a ponerle una cuota al usuario usrpractica1
@@ -81,6 +81,8 @@ ALTER USER USRPRACTICA1 quota 1M on USERS;
     3. Modifica el usuario USRPRACTICA1 para que tenga cuota 0 en el tablespace SYSTEM.
 
 ALTER USER USRPRACTICA1 quota 0 on SYSTEM;
+
+--Como el usuario no está en el tablespace system no se va a ver reflejado el cambio
 
     4. Concede a USRPRACTICA1 el ROLPRACTICA1.
 GRANT rolpractica1 to USRPRACTICA1;
@@ -212,9 +214,15 @@ SQL> INSERT INTO SCOTT.EMP VALUES(8001, 'Prueba1', 'CLERK', 7782,TO_DATE('23-ENE
 
 
     8. Quita a USRPRACTICA1 el privilegio de crear vistas. Comprueba que ya no puede hacerlo.
---Ya que el privilegio de crear vistas viene del rol rolpractica1 vamos a quitarle dicho privilegio
-revoke create view from rolpractica1;
+--Ya que el privilegio de crear vistas viene del rol rolpractica1 vamos a crearle un rol sin dicho privilegio
+create role rolpractica2;
+grant create session to rolpractica2;
+grant create table to rolpractica2;
+grant insert on SCOTT.EMP to rolpractica2;
 
+--Le quitamos el rol de usrpractica1 y le damos el nuevo rol
+revoke rolpractica1 from usrpractica1;
+grant rolpractica2 to usrpractica1;
 --Comprobación
 connect USRPRACTICA1/PRACTICA
 
@@ -230,34 +238,341 @@ ORA-01031: privilegios insuficientes
 
     9. Crea un perfil NOPARESDECURRAR que limita a dos el número de minutos de inactividad permitidos en una sesión.
 
+Create profile NOPARESDECURRAR LIMIT
+IDLE_TIME 2
+;
+
     10. Activa el uso de perfiles en ORACLE.
+
+ALTER SYSTEM SET RESOURCE_LIMIT=TRUE;
 
     11. Asigna el perfil creado a USRPRACTICA1 y comprueba su correcto funcionamiento.
 
-    12. Crea un perfil CONTRASEÑASEGURA especificando que la contraseña caduca mensualmente y sólo se permiten tres intentos fallidos para acceder a la cuenta. En caso de superarse, la cuenta debe quedar bloqueada indefinidamente.
+alter user USRPRACTICA1 profile NOPARESDECURRAR;
+
+--Entramos al perfil y esperamos 2 minutos para comprobar si echa al usuario
+SQL> connect USRPRACTICA1/PRACTICA
+Conectado.
+
+Sesión modificada.
+
+SQL> select * from cat;
+select * from cat
+*
+ERROR en línea 1:
+ORA-02396: ha excedido el tiempo máximo de inactividad, vuelva a conectarse
+
+
+
+    12. Crea un perfil CONTRASEÑASEGURA especificando que la contraseña caduca mensualmente y sólo se permiten tres intentos fallidos para acceder a la cuenta. En caso de superarse, la cuenta debe quedar 
+bloqueada indefinidamente.
+
+Create profile CONTRASENASEGURA LIMIT
+FAILED_LOGIN_ATTEMPTS 3
+PASSWORD_LIFE_TIME 30
+PASSWORD_LOCK_TIME UNLIMITED
+;
 
     13. Asigna el perfil creado a USRPRACTICA1 y comprueba su funcionamiento. Desbloquea posteriormente al usuario.
 
+alter user USRPRACTICA1 profile CONTRASENASEGURA;
+
+--Ahora vamos a fallar la contraseña 3 veces
+SQL> connect USRPRACTICA1/asd
+ERROR:
+ORA-01017: nombre de usuario/contraseña no válidos; conexión denegada
+
+
+Advertencia: ¡Ya no está conectado a ORACLE!
+SQL> connect USRPRACTICA1/asd
+ERROR:
+ORA-01017: nombre de usuario/contraseña no válidos; conexión denegada
+
+
+SQL> connect USRPRACTICA1/asd
+ERROR:
+ORA-01017: nombre de usuario/contraseña no válidos; conexión denegada
+
+
+SQL> connect USRPRACTICA1/asd
+ERROR:
+ORA-28000: la cuenta está bloqueada
+
+--Para desbloquear al usuario
+SQL> alter user USRPRACTICA1 account unlock;
+
+Usuario modificado.
+
+SQL> connect USRPRACTICA1/PRACTICA
+Conectado.
+
+Sesión modificada.
+
+
+
     14. Consulta qué usuarios existen en tu base de datos.
+
+SELECT USERNAME
+FROM DBA_USERS;
+
 
     15. Elige un usuario concreto y consulta qué cuota tiene sobre cada uno de los tablespaces.
 
+--Escojeremos el usuario USRPRACTICA1 por ejemplo
+Select *
+from dba_ts_quotas
+where USERNAME='USRPRACTICA1';
+
+TABLESPACE_NAME 	       USERNAME 															     BYTES  MAX_BYTES	  BLOCKS MAX_BLOCKS DRO
+------------------------------ -------------------------------------------------------------------------------------------------------------------------------- ---------- ---------- ---------- ---------- ---
+USERS			       USRPRACTICA1																 0    1048576	       0	128 NO
+
+
     16. Elige un usuario concreto y muestra qué privilegios de sistema tiene asignados.
+
+--Escojeremos el usuario ALEXRR por ejemplo
+select *
+from dba_sys_privs
+where GRANTEE='ALEXRR';
+
+GRANTE PRIVILEGE				ADM COM INH
+------ ---------------------------------------- --- --- ---
+ALEXRR UNLIMITED TABLESPACE			NO  YES NO
+ALEXRR ALTER SESSION				NO  YES NO
+ALEXRR CREATE ROLE				NO  YES NO
 
     17. Elige un usuario concreto y muestra qué privilegios sobre objetos tiene asignados.
 
+--Escogeremos el usuario SCOTT por ejemplo
+Select *
+from DBA_TAB_PRIVS
+where GRANTEE='USRPRACTICA1';
+
+GRANTEE 															 OWNER											  TABLE_NAME															   GRANTOR										    PRIVILEGE				     GRA HIE COM TYPE			  INH
+-------------------------------------------------------------------------------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------- ---------------------------------------- --- --- --- ------------------------ ---
+USRPRACTICA1															 SCOTT											  DEPT																   SCOTT										    SELECT				     YES NO  YES TABLE			  NO
+
+
     18. Consulta qué roles existen en tu base de datos.
+
+Select roles
+from dba_roles;
 
     19. Elige un rol concreto y consulta qué usuarios lo tienen asignado.
 
+--Vamos a escoger el rol que ya hicimos Rolpractica1
+
+select * 
+from dba_role_privs 
+where granted_role='ROLPRACTICA1'; 
+
+GRANTEE 															 GRANTED_ROLE ADM DEL DEF COM INH
+-------------------------------------------------------------------------------------------------------------------------------- ------------ --- --- --- --- ---
+USRPRACTICA1															 ROLPRACTICA1 NO  NO  YES YES NO
+PRUEBA1 															 ROLPRACTICA1 NO  NO  YES YES NO
+SYS																 ROLPRACTICA1 YES NO  YES YES NO
+
+
+
     20. Elige un rol concreto y averigua si está compuesto por otros roles o no.
 
+--Vamos a escoger el rol DBA
+SELECT GRANTED_ROLE
+FROM ROLE_ROLE_PRIVS
+WHERE ROLE='DBA';
+
+GRANTED_ROLE
+--------------------------------------------------------------------------------------------------------------------------------
+DATAPUMP_IMP_FULL_DATABASE
+OPTIMIZER_PROCESSING_RATE
+SCHEDULER_ADMIN
+OLAP_DBA
+EXECUTE_CATALOG_ROLE
+OLAP_XS_ADMIN
+CAPTURE_ADMIN
+
+
+--Si escogemos un rol que no esté compuesto por otros roles, por ejemplo rolpractica1 no debería mostrar nada
+SELECT GRANTED_ROLE
+FROM ROLE_ROLE_PRIVS
+WHERE ROLE='ROLPRACTICA1';
+
+ninguna fila seleccionada
+ 
+
     21. Consulta qué perfiles existen en tu base de datos.
+Select distinct PROFILE
+from DBA_PROFILES;
 
     22. Elige un perfil y consulta qué límites se establecen en el mismo.
 
+
+--Vamos a escoger el perfil que creamos, NOPARESDECURRAR
+
+Select *
+FROM dba_profiles
+where PROFILE='NOPARESDECURRAR';
+
+
     23. Muestra los nombres de los usuarios que tienen limitado el número de sesiones concurrentes.
+
+SELECT USERNAME
+FROM DBA_USERS
+where PROFILE = (Select PROFILE
+		 FROM DBA_PROFILES
+		 WHERE RESOURCE_NAME='SESSIONS_PER_USER'
+		 and LIMIT!='DEFAULT' and LIMIT!='UNLIMITED');
+
 
     24. Realiza un procedimiento que reciba un nombre de usuario y un privilegio de sistema y nos muestre el mensaje 'SI, DIRECTO' si el usuario tiene ese privilegio concedido directamente, 'SI, POR ROL' si el usuario tiene ese privilegio en alguno de los roles que tiene concedidos y un 'NO' si el usuario no tiene dicho privilegio.
 
+Create or replace procedure DecirSiEsRol(p_indicador number)
+is
+begin
+	if p_indicador=0 then
+		dbms_output.put_line('NO');
+	else
+		dbms_output.put_line('SI, POR ROL');
+	end if;
+end;
+/
+
+Create or replace procedure AnalizarRolCompuesto(p_rol varchar2,p_priv varchar2,p_indicador in out number)
+is
+	cursor c_compuesto is
+	select GRANTED_ROLE
+	from role_role_privs
+	start with ROLE = p_rol
+	connect by ROLE = prior GRANTED_ROLE;
+	v_analizarprivilegio number(1);
+begin
+	Select count(*) into v_analizarprivilegio
+	from role_sys_privs
+	where ROLE=p_rol
+	and PRIVILEGE=upper(p_priv);
+	if v_analizarprivilegio>0 then
+		p_indicador:=1;
+	else
+		for v_compuesto in c_compuesto loop
+			AnalizarRolSimple(v_compuesto.granted_role,p_priv,p_indicador);
+		end loop;
+	end if;
+end;
+/
+
+Create or replace procedure AnalizarRolSimple(p_rol varchar2,p_priv varchar2,p_indicador in out number)
+is
+	v_analizarprivilegio number(1);
+begin
+	Select count(*) into v_analizarprivilegio
+	from role_sys_privs
+	where ROLE=p_rol
+	and PRIVILEGE=upper(p_priv);
+	if v_analizarprivilegio>0 then
+		p_indicador:=1;
+	end if;
+	
+end;
+/
+
+
+
+Create or replace procedure AnalizarRol(p_rol varchar2,p_priv varchar2,p_indicador in out number)
+is
+	v_compuesto number(1):=0;
+begin
+	SELECT count(*) into v_compuesto
+	FROM ROLE_ROLE_PRIVS
+	WHERE ROLE=p_rol;
+	if v_compuesto=0 then
+		AnalizarRolSimple(p_rol,p_priv,p_indicador);
+	else
+		AnalizarRolCompuesto(p_rol,p_priv,p_indicador);
+	end if;
+end;
+/
+
+
+Create or replace procedure ExaminarPrivilegioRol(p_user varchar2,p_priv varchar2)
+is
+	cursor c_roles is
+	Select GRANTED_ROLE
+	from dba_role_privs
+	where GRANTEE=UPPER(p_user);
+	v_indicador number(1):=0;
+begin
+	for v_roles in c_roles loop
+		AnalizarRol(v_roles.GRANTED_ROLE,p_priv,v_indicador);
+	end loop;
+	DecirSiEsRol(v_indicador);
+end;
+/
+
+
+Create or replace procedure ExaminarPrivilegioDirecto(p_user varchar2,p_priv varchar2,v_indicador in out number)
+is
+begin
+	Select count(*) into v_indicador
+	from dba_sys_privs
+	where GRANTEE=upper(p_user)
+	and PRIVILEGE=upper(p_priv);
+end;
+/
+
+Create or replace procedure ExaminarPrivilegio(p_user varchar2,p_priv varchar2)
+is
+	v_indicadordirecto number:=0;
+begin
+	dbms_output.put_line('Examinar Privilegios');
+	dbms_output.put_line('--------------------');
+	ExaminarPrivilegioDirecto(p_user,p_priv,v_indicadordirecto);
+	if v_indicadordirecto>0 then
+		dbms_output.put_line('SI, DIRECTO');
+	else
+		ExaminarPrivilegioRol(p_user,p_priv);
+	end if;
+end;
+/
+
     25. Realiza un procedimiento llamado MostrarNumSesiones que reciba un nombre de usuario y muestre el número de sesiones concurrentes que puede tener abiertas como máximo y las que tiene abiertas realmente.
+
+Create or replace procedure MostrarSesionesAbiertas(p_user varchar2)
+is
+	v_sesiones number(2);
+begin
+	select count(USERNAME) into v_sesiones
+	from v$session 
+	where USERNAME=p_user;
+	dbms_output.put_line('Tiene '||v_sesiones||' sesiones abiertas');
+end;
+/
+
+Create or replace procedure MostrarSesionesMaximas(p_user varchar2)
+is
+	v_sesiones varchar2(15);
+begin
+	Select LIMIT into v_sesiones
+	FROM DBA_PROFILES
+	WHERE RESOURCE_NAME='SESSIONS_PER_USER'
+	AND PROFILE = (Select PROFILE
+	      	       FROM DBA_USERS
+	    	       WHERE USERNAME=p_user);
+	dbms_output.put_line('Numero de sesiones');
+	dbms_output.put_line('------------------');
+	if v_sesiones='UNLIMITED' or v_sesiones='DEFAULT' then
+		dbms_output.put_line('Puede tener sesiones ilimitadas');
+	else
+		dbms_output.put_line('Puede tener '||v_sesiones||' maximas');
+	end if;
+		
+end;
+/
+
+Create or replace procedure MostrarNumSesiones(p_user varchar2)
+is
+begin
+	MostrarSesionesMaximas(p_user);
+	MostrarSesionesAbiertas(p_user);
+end;
+/
+

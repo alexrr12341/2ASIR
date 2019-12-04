@@ -1,0 +1,121 @@
+(ORACLE) Realiza un procedimiento que muestre los usuarios que pueden conceder privilegios de sistema a otros usuarios y cuales son dichos privilegios.
+
+Create or replace procedure verusuariorolsimplecompuesto(p_rol varchar2,p_privilegio varchar2)
+is
+	cursor c_usuarios is
+	SELECT USERNAME
+	FROM DBA_USERS
+	where USERNAME IN ( select GRANTEE
+   			    from dba_role_privs
+			    start with GRANTED_ROLE = p_rol
+			    connect by GRANTED_ROLE = prior GRANTEE);
+begin
+	for v_usuarios in c_usuarios loop
+		dbms_output.put_line('Usuario: '||v_usuarios.USERNAME);
+		dbms_output.put_line('Privilegio: '||p_privilegio);
+		dbms_output.put_line(chr(13));
+	end loop;
+end;
+/
+
+
+Create or replace procedure verusuariorolsimple(p_rol varchar2,p_privilegio varchar2)
+is
+	cursor c_usuarios is
+	Select GRANTEE
+	from dba_role_privs
+	where GRANTED_ROLE=p_rol;
+begin
+	for v_usuarios in c_usuarios loop
+		dbms_output.put_line('Usuario: '||v_usuarios.GRANTEE);
+		dbms_output.put_line('Privilegio: '||p_privilegio);
+		dbms_output.put_line(chr(13));
+	end loop;
+end;
+/
+
+Create or replace procedure verusuariorolcompuesto(p_rol varchar2,p_privilegio varchar2)
+is
+	cursor c_compuesto is
+	select GRANTED_ROLE
+	from role_role_privs
+	start with ROLE = p_rol
+	connect by ROLE = prior GRANTED_ROLE;
+	v_analizarprivilegio number(1):=0;
+begin
+	Select count(*) into v_analizarprivilegio
+	from role_sys_privs
+	where ROLE=p_rol
+	and PRIVILEGE=p_privilegio;
+	if v_analizarprivilegio = 0 then
+		for v_compuesto in c_compuesto loop
+			verusuariorolsimplecompuesto(v_compuesto.GRANTED_ROLE,p_privilegio);
+		end loop;
+	else
+		verusuariorolsimple(p_rol,p_privilegio);
+	end if;
+end;
+/
+
+Create or replace procedure privilegiossuperusuariorol
+is
+	cursor c_privs is
+	Select GRANTEE,PRIVILEGE
+	from dba_sys_privs
+	where ADMIN_OPTION='YES'
+	and GRANTEE in (Select ROLE
+			FROM DBA_ROLES);
+	v_compuesto number(1):=0;
+	v_rol varchar2(1000);
+begin
+	for v_privs in c_privs loop
+		select ROLE into v_rol
+		from role_role_privs
+		start with GRANTED_ROLE = v_privs.GRANTEE
+		connect by GRANTED_ROLE = prior ROLE;
+		if v_compuesto=0 then
+			verusuariorolsimple(v_privs.GRANTEE,v_privs.PRIVILEGE);
+		else
+			verusuariorolcompuesto(v_privs.GRANTEE,v_privs.PRIVILEGE);
+		end if;
+	end loop;
+end;
+/
+
+
+Create or replace procedure privilegiossuperusuariodirecto
+is
+	cursor c_privsd is
+	Select GRANTEE,PRIVILEGE
+	from dba_sys_privs
+	where ADMIN_OPTION='YES'
+	and GRANTEE in (Select USERNAME
+			FROM DBA_USERS);
+begin
+	for v_privsd in c_privsd loop
+		dbms_output.put_line('Usuario: '||v_privsd.GRANTEE);
+		dbms_output.put_line('Privilegio: '||v_privsd.PRIVILEGE);
+		dbms_output.put_line(chr(13));
+	end loop;
+end;
+/
+
+Create or replace procedure privilegiossuperusuario
+is
+	
+begin
+	dbms_output.put_line('Usuarios que pueden conceder privilegios');
+	dbms_output.put_line('----------------------------------------');
+	privilegiossuperusuariodirecto;
+	privilegiossuperusuariorol;
+end;
+/
+
+create user pacote identified by pacote;
+create role pacote1;
+grant create session to pacote1 with admin option;
+grant pacote1 to pacote;
+
+exec privilegiossuperusuario
+
+

@@ -1,0 +1,124 @@
+1.Permite realizar conexiones ssh desde los equipos de la LAN
+
+<pre>
+iptables -A FORWARD -i eth1 -o eth0 -s 192.168.100.0/24 -p tcp --dport 22 -j ACCEPT
+iptables -A FORWARD -o eth1 -i eth0 -d 192.168.100.0/24 -p tcp --sport 22 -j ACCEPT
+</pre>
+Ahora vamos a intentar conectarnos a salmorejo
+<pre>
+debian@lan:~$ ssh centos@172.22.200.90
+The authenticity of host '172.22.200.90 (172.22.200.90)' can't be established.
+ECDSA key fingerprint is SHA256:bQUI1dNigM69IoOMx725gpwnFxVTn5oWoH1luHBQUmo.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added '172.22.200.90' (ECDSA) to the list of known hosts.
+centos@172.22.200.90: Permission denied (publickey,gssapi-keyex,gssapi-with-mic).
+</pre>
+Podemos realizar la conexión
+
+2.Instala un servidor de correos en la máquina de la LAN. Permite el acceso desde el exterior y desde el cortafuego al servidor de correos. Para probarlo puedes ejecutar un telnet al puerto 25 tcp.
+Instalaremos postfix
+<pre>
+apt install postfix
+</pre>
+
+En main.cf ponemos
+<pre>
+relayhost = babuino-smtp.gonzalonazareno.org
+</pre>
+
+
+Y hacemos las reglas iptables
+<pre>
+iptables -A FORWARD -i eth0 -o eth1 -p tcp --dport 25 -j ACCEPT
+iptables -A FORWARD -o eth0 -i eth1 -p tcp --sport 25 -j ACCEPT
+</pre>
+
+Añadimos ahora la regla DNAT para entrar desde el exterior
+<pre>
+iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 25 -j DNAT --to 192.168.100.10
+</pre>
+
+
+Accedemos desde fuera
+<pre>
+alexrr@pc-alex:~/vagrant/escenarioDNS$ telnet 172.22.201.30 25
+Trying 172.22.201.30...
+Connected to 172.22.201.30.
+Escape character is '^]'.
+220 lan.novalocal ESMTP Postfix (Debian/GNU)
+</pre>
+
+Ahora para acceder desde el cortafuegos hacia el servidor de correos hacemos que el cortafuegos abra el puerto 25 en él
+<pre>
+iptables -A OUTPUT -o eth1 -p tcp --dport 25 -j ACCEPT
+iptables -A INPUT -i eth1 -p tcp --sport 25 -j ACCEPT
+</pre>
+
+Lo probamos
+<pre>
+root@router-fw:/home/debian# telnet 192.168.100.10 25
+Trying 192.168.100.10...
+Connected to 192.168.100.10.
+Escape character is '^]'.
+220 lan.novalocal ESMTP Postfix (Debian/GNU)
+</pre>
+
+<pre>
+iptables -A OUTPUT -p tcp -o eth0 -d 192.168.100.0/24 --dport 22 -j ACCEPT
+iptables -A INPUT -p tcp -i eth0 -s 192.168.100.0/24 --sport 22 -j ACCEPT
+</pre>
+3.Permite poder hacer conexiones ssh desde exterior a la LAN
+<pre>
+iptables -A FORWARD -i eth0 -o eth1 -p tcp --dport 22 -j ACCEPT
+iptables -A FORWARD -o eth0 -i eth1 -p tcp --sport 22 -j ACCEPT
+iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 22 -j DNAT --to 192.168.100.10
+</pre>
+Al realizar la conexión SSH nos dirá que el host ha cambiado, tendremos que ejecutar
+<pre>
+  ssh-keygen -f "/home/alexrr/.ssh/known_hosts" -R "172.22.201.30"
+</pre>
+Y vemos la comprobación de la máquina.
+<pre>
+alexrr@pc-alex:~$ ssh debian@172.22.201.30
+Warning: No xauth data; using fake authentication data for X11 forwarding.
+X11 forwarding request failed on channel 0
+Linux lan 4.19.0-6-cloud-amd64 #1 SMP Debian 4.19.67-2+deb10u1 (2019-09-20) x86_64
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+Last login: Mon Dec  2 09:42:54 2019 from 172.22.9.227
+debian@lan:~$ 
+</pre>
+4.Modifica la regla anterior, para que al acceder desde el exterior por ssh tengamos que conectar al puerto 2222, aunque el servidor ssh este configurado para acceder por el puerto 22.
+<pre>
+iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 2222 -j DNAT --to 192.168.100.10:22
+</pre>
+
+Hacemos la prueba de funcionamiento
+<pre>
+alexrr@pc-alex:~$ ssh -p2222 debian@172.22.201.30
+The authenticity of host '[172.22.201.30]:2222 ([172.22.201.30]:2222)' can't be established.
+ECDSA key fingerprint is SHA256:KdrD7HYJlwYR+TYGQR3xj4U28kYl1xvxpa0tWs3wuNw.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added '[172.22.201.30]:2222' (ECDSA) to the list of known hosts.
+Warning: No xauth data; using fake authentication data for X11 forwarding.
+X11 forwarding request failed on channel 0
+Linux lan 4.19.0-6-cloud-amd64 #1 SMP Debian 4.19.67-2+deb10u1 (2019-09-20) x86_64
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+Last login: Mon Dec  2 09:55:56 2019 from 172.22.9.227
+debian@lan:~$ 
+</pre>
+
+5.Permite hacer consultas DNS sólo al servidor 192.168.202.2. Comprueba que no puedes hacer un dig @1.1.1.1.
+6.¿Tendría resolución de nombres y navegación web el cortafuego? ¿Sería necesario? ¿Tendrían que estar esas de reglas de forma constante en el cortafuego?
+

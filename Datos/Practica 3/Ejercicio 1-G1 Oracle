@@ -1,0 +1,56 @@
+Crea un usuario llamado Becario y, sin usar los roles de ORACLE, dale los siguientes privilegios: (1,5 puntos)
+Create user Becario identified by Becario;
+
+• Conectarse a la base de datos.
+grant create session to Becario;
+• Modificar el número de errores en la introducción de la contraseña de cualquier usuario.
+
+--Le damos al usuario Becario la posibilidad de crear perfiles
+grant create profile to Becario;
+
+Create profile LimiteContrasenas LIMIT
+FAILED_LOGIN_ATTEMPTS 5
+;
+
+--Ahora le damos al usuario becarios la posibilidad de dar dicho perfil
+grant alter user to Becario;
+
+--Y ahora este usuario podría dar el perfil a diferentes usuarios
+Alter user {USUARIO} profile LimiteContrasenas;
+
+• Modificar índices en cualquier esquema (este privilegio podrá pasarlo a quien quiera)
+grant alter any index to Becario with admin option;
+
+--Prueba
+SQL> connect Becario/Becario
+Conectado.
+
+Sesión modificada.
+
+SQL> alter index ALEXRR.PK_CODIGO_VIVERO RENAME TO PK_CODIGO_VIVERO1;
+
+Índice modificado.
+
+
+• Insertar filas en scott.emp (este privilegio podrá pasarlo a quien quiera)
+
+grant insert on SCOTT.EMP to Becario with grant option;
+
+• Crear objetos en cualquier tablespace.
+
+grant unlimited tablespace to Becario;
+
+• Gestión completa de usuarios, privilegios y roles.
+--Usuarios
+grant create user to Becario;
+grant alter user to Becario;
+grant drop user to Becario;
+
+--Privilegios
+grant grant any privilege to Becario;
+
+--Roles
+grant create role to Becario;
+grant drop any role to Becario;
+grant alter any role to Becario;
+grant grant any role to Becario;

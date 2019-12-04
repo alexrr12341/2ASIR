@@ -1,0 +1,77 @@
+2 maquinas con discos en ficheros con aprovisionamiento ligero
+--------------------------------------------------------------
+1 conectada a una red NAT --> 10.10.10.0/24
+1 conectada a un bridge externo
+
+DRiver virti0 en todo lo que pueda
+
+Creamos el dispositivo de bloque de 10G
+
+qemu-img create -f qcow2 buster.qcow2 10G
+
+Creamos la máquina virtual
+kvm -m 512 -hda buster.qcow2 \
+-cdrom ../Descargas/debian-10.1.0-amd64-netinst.iso
+
+Ahora creamos los sigos para aprovisionamiento ligero
+
+qemu-img create -b buster.qcow2 -f qcow2 buster1.qcow2
+qemu-img create -b buster.qcow2 -f qcow2 buster2.qcow2
+
+
+
+Hacemos un br0
+
+auto br0
+iface br0 inet dhcp
+	bridge_ports enp7s0
+
+Hacemos la red interna
+nat.xml:
+<pre>
+<network> 
+ <name>red_nat</name> 
+    <forward mode="nat"/> 
+    <ip address="10.10.10.1" netmask="255.255.255.0"> 
+        <dhcp> 
+           <range start="10.10.10.1" end="10.10.10.50"/> 
+        </dhcp> 
+    </ip> 
+</network>
+</pre>
+virsh -c qemu:///system net-define nat.xml
+virsh -c qemu:///system net-autostart red_nat
+virsh -c qemu:///system net-start red_nat
+
+
+Y ahora nuestro bridge
+<pre>
+<network>
+ <name>bridge</name>
+ <forward mode="bridge"/>
+ <bridge name="br0"/>
+</network>
+</pre>
+
+virsh -c qemu:///system net-define bridge.xml
+virsh -c qemu:///system net-autostart bridge
+virsh -c qemu:///system net-start bridge
+
+virsh -c qemu:///system net-list
+ Name      State    Autostart   Persistent
+--------------------------------------------
+ red_nat   active   yes         yes
+
+
+Ahora hacemos las máquinas
+
+virt-install --connect qemu:///system --name debian2 \
+--memory 512 --disk path=/home/alexrr/kvm/buster1.qcow2 \
+--vcpus=1 --boot hd --vnc --os-type linux --os-variant=debian9 \
+--network network=red_nat --noautoconsole --hvm --keymap es
+
+
+virt-install --connect qemu:///system --name debian3 \
+--memory 512 --disk path=/home/alexrr/kvm/buster2.qcow2 \
+--vcpus=1 --boot hd --vnc --os-type linux --os-variant=debian9 \
+--network network=bridge --noautoconsole --hvm --keymap es
