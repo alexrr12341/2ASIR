@@ -1,0 +1,330 @@
+La máquina router-fw tiene un servidor ssh escuchando por el puerto 22, pero al acceder desde el exterior habrá que conectar al puerto 2222.
+<pre>
+iptables -A INPUT -s 172.22.0.0/16 -p tcp -m tcp --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A OUTPUT -d 172.22.0.0/16 -p tcp -m tcp --sport 22 -m state --state ESTABLISHED -j ACCEPT
+iptables -P INPUT DROP
+iptables -P OUTPUT DROP
+iptables -P FORWARD DROP
+</pre>
+
+Prueba de funcionamiento:
+<pre>
+alexrr@pc-alex:~$ ssh debian@172.22.201.65
+Warning: No xauth data; using fake authentication data for X11 forwarding.
+X11 forwarding request failed on channel 0
+Linux router-fw 4.19.0-6-cloud-amd64 #1 SMP Debian 4.19.67-2+deb10u1 (2019-09-20) x86_64
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+Last login: Tue Dec 17 09:36:59 2019 from 172.22.1.22
+debian@router-fw:~$ 
+</pre>
+
+Vamos ahora a realizar una unidad de systemd para que se guarden las iptables
+<pre>
+[Unit]
+Description=Packet Filtering Framework
+
+[Service]
+Type=oneshot
+ExecStart=sh /home/debian/script-iptables.sh
+ExecReload=sh /home/debian/script-iptables.sh
+ExecStop=/usr/lib/systemd/scripts/iptables-flush
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+
+
+</pre>
+
+script:
+<pre>
+#!/bin/sh
+iptables-restore < /home/debian/firewall.txt
+</pre>
+
+
+Y activamos para que al reiniciar funcione
+<pre>
+systemctl enable iprestore
+</pre>
+
+Activamos también el bit de forward
+<pre>
+echo 1 > /proc/sys/net/ipv4/ip_forward
+</pre>
+
+*La máquina router-fw tiene un servidor ssh escuchando por el puerto 22, pero al acceder desde el exterior habrá que conectar al puerto 2222.*
+
+Vamos a redirigir las peticiones del puerto 22 al puerto 2222
+<pre>
+iptables -t nat -A PREROUTING -i eth0 -p tcp -m tcp --dport 2222 -j REDIRECT --to-ports 22
+</pre>
+
+Y vamos a bloquear el puerto 22 para que nadie pueda acceder por él
+<pre>
+iptables -t nat -A PREROUTING -i eth0 -p tcp -m tcp --dport 22 -j DNAT --to-destination 127.0.0.1:22
+</pre>
+
+
+Prueba de funcionamiento:
+
+<pre>
+alexrr@pc-alex:~/ic-travis-html5$ ssh debian@172.22.201.65
+ssh: connect to host 172.22.201.65 port 22: Connection timed out
+
+alexrr@pc-alex:~/ic-travis-html5$ ssh -p2222 debian@172.22.201.65
+Warning: No xauth data; using fake authentication data for X11 forwarding.
+X11 forwarding request failed on channel 0
+Linux router-fw 4.19.0-6-cloud-amd64 #1 SMP Debian 4.19.67-2+deb10u1 (2019-09-20) x86_64
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+Last login: Thu Jan  9 08:45:13 2020 from 172.22.0.9
+debian@router-fw:~$ 
+</pre>
+
+
+*Desde la LAN y la DMZ se debe permitir la conexión ssh por el puerto 22 al la máquina router-fw.*
+
+LAN:
+
+<pre>
+iptables -A INPUT -s 192.168.100.0/24 -p tcp --dport 22 -j ACCEPT
+iptables -A OUTPUT -d 192.168.100.0/24 -p tcp --sport 22 -j ACCEPT
+</pre>
+
+!LAN.png!
+
+DMZ:
+
+<pre>
+iptables -A INPUT -s 192.168.200.0/24 -p tcp --dport 22 -j ACCEPT
+iptables -A OUTPUT -d 192.168.200.0/24 -p tcp --sport 22 -j ACCEPT
+</pre>
+
+!DMZ.png!
+
+
+*La máquina router-fw debe tener permitido el tráfico para la interfaz loopback.*
+
+Prueba antes de poner las reglas
+<pre>
+root@router-fw:/home/debian# ping 127.0.0.1
+PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
+ping: sendmsg: Operation not permitted
+ping: sendmsg: Operation not permitted
+</pre>
+
+Ponemos la regla:
+<pre>
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A OUTPUT -o lo -j ACCEPT
+</pre>
+
+Prueba despues de poner la regla:
+<pre>
+root@router-fw:/home/debian# ping 127.0.0.1
+PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
+64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.059 ms
+64 bytes from 127.0.0.1: icmp_seq=2 ttl=64 time=0.078 ms
+</pre>
+
+*A la máquina router-fw se le puede hacer ping desde la DMZ, pero desde la LAN se le debe rechazar la conexión (REJECT).*
+
+
+Para que podamos realizar ping desde la DMZ al router, realizamos la siguiente regla
+<pre>
+iptables -A INPUT -i eth2 -s 192.168.200.0/24 -p icmp -m icmp --icmp-type echo-request -j ACCEPT
+iptables -A OUTPUT -o eth2 -d 192.168.200.0/24 -p icmp -m icmp --icmp-type echo-reply -j ACCEPT
+</pre>
+!pingDMZ.png!
+
+Para que podamos rechazar la conexión realizamos la siguiente regla
+<pre>
+iptables -A INPUT -i eth1 -s 192.168.100.0/24 -p icmp -m icmp --icmp-type echo-request -j REJECT --reject-with icmp-port-unreachable
+iptables -A OUTPUT -o eth1 -d 192.168.100.0/24 -p icmp -m icmp --icmp-type echo-reply -j ACCEPT
+iptables -A OUTPUT -o eth1 -d 192.168.100.0/24 -p icmp -m state --state RELATED -j ACCEPT
+</pre>
+!pingLAN.png!
+
+*La máquina router-fw puede hacer ping a la LAN, la DMZ y al exterior.*
+
+LAN:
+<pre>
+iptables -A OUTPUT -o eth1 -d 192.168.100.0/24 -p icmp -m icmp --icmp-type echo-request -j ACCEPT
+iptables -A INPUT -i eth1 -s 192.168.100.0/24 -p icmp -m icmp --icmp-type echo-reply -j ACCEPT
+</pre>
+
+Prueba:
+<pre>
+root@router-fw:/home/debian# ping 192.168.100.10
+PING 192.168.100.10 (192.168.100.10) 56(84) bytes of data.
+64 bytes from 192.168.100.10: icmp_seq=1 ttl=64 time=1.75 ms
+64 bytes from 192.168.100.10: icmp_seq=2 ttl=64 time=1.38 ms
+</pre>
+
+DMZ:
+<pre>
+iptables -A OUTPUT -o eth2 -d 192.168.200.0/24 -p icmp -m icmp --icmp-type echo-request -j ACCEPT
+iptables -A INPUT -i eth2 -s 192.168.200.0/24 -p icmp -m icmp --icmp-type echo-reply -j ACCEPT
+</pre>
+
+Prueba:
+<pre>
+iptables -A OUTPUT -o eth2 -d 192.168.200.0/24 -p icmp -m icmp --icmp-type echo-request -j ACCEPT
+iptables -A INPUT -i eth2 -s 192.168.200.0/24 -p icmp -m icmp --icmp-type echo-reply -j ACCEPT
+</pre>
+
+Exterior:
+<pre>
+iptables -A OUTPUT -o eth0 -p icmp -m icmp --icmp-type echo-request -j ACCEPT
+iptables -A INPUT -i eth0 -p icmp -m icmp --icmp-type echo-reply -j ACCEPT
+</pre>
+
+Prueba:
+<pre>
+root@router-fw:/home/debian# ping 8.8.8.8
+PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
+64 bytes from 8.8.8.8: icmp_seq=1 ttl=51 time=43.2 ms
+64 bytes from 8.8.8.8: icmp_seq=2 ttl=51 time=43.2 ms
+</pre>
+
+*Desde la máquina DMZ se puede hacer ping y conexión ssh a la máquina LAN.*
+
+
+Habilitaremos el ssh hacia la máquina LAN:
+
+<pre>
+iptables -A FORWARD -i eth2 -o eth1 -p tcp --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i eth1 -o eth2 -p tcp --sport 22 -m state --state ESTABLISHED -j ACCEPT
+</pre>
+
+!sshDMZLAN.png!
+
+Habilitaremos el ping hacia la máquina LAN:
+
+<pre>
+iptables -A FORWARD -i eth2 -o eth1 -s 192.168.200.0/24 -p icmp -m icmp --icmp-type echo-request -j ACCEPT
+iptables -A FORWARD -i eth1 -o eth2 -d 192.168.200.0/24 -p icmp -m icmp --icmp-type echo-reply -j ACCEPT
+</pre>
+
+!pingDMZLAN.png!
+
+*Desde la máquina LAN no se puede hacer ping, pero si se puede conectar por ssh a la máquina DMZ.*
+
+Vamos a habilitar el ssh hacia DMZ
+<pre>
+iptables -A FORWARD -i eth1 -o eth2 -p tcp --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i eth2 -o eth1 -p tcp --sport 22 -m state --state ESTABLISHED -j ACCEPT
+</pre>
+
+!sshLANDMZ.png!
+
+!pingLANDMZ.png!
+
+
+*Configura la máquina router-fw para que las máquinas LAN y DMZ puedan acceder al exterior.*
+<pre>
+iptables -t nat -A POSTROUTING -s 192.168.100.0/24 -o eth0 -j MASQUERADE
+iptables -t nat -A POSTROUTING -s 192.168.200.0/24 -o eth0 -j MASQUERADE
+</pre>
+
+*La máquina LAN se le permite hacer ping al exterior.*
+
+<pre>
+iptables -A FORWARD -i eth1 -o eth0 -p icmp -m icmp --icmp-type echo-request -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth1 -p icmp -m icmp --icmp-type echo-reply -j ACCEPT
+</pre>
+
+!pingLANExt.png!
+
+*La máquina LAN puede navegar.*
+
+Habilitamos http y https:
+<pre>
+iptables -A FORWARD -i eth1 -o eth0 -p tcp -m multiport --dports 80,443 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth1 -p tcp -m multiport --sports 80,443 -m state --state ESTABLISHED -j ACCEPT
+</pre>
+
+Habilitamos el dns:
+<pre>
+iptables -A FORWARD -i eth1 -o eth0 -p udp --dport 53 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth1 -p udp --sport 53 -m state --state ESTABLISHED -j ACCEPT
+</pre>
+
+!updateLAN.png!
+
+*La máquina DMZ puede navegar. Instala un servidor web, un servidor ftp y un servidor de correos.*
+
+Vamos a realizar lo anterior con DMZ esta vez:
+
+Habilitamos http y https:
+<pre>
+iptables -A FORWARD -i eth2 -o eth0 -p tcp -m multiport --dports 80,443 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth2 -p tcp -m multiport --sports 80,443 -m state --state ESTABLISHED -j ACCEPT
+</pre>
+
+Habilitamos el dns:
+<pre>
+iptables -A FORWARD -i eth2 -o eth0 -p udp --dport 53 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth2 -p udp --sport 53 -m state --state ESTABLISHED -j ACCEPT
+</pre>
+
+Ahora instalaremos los servicios que se nos pide:
+<pre>
+apt install apache2
+apt install postfix
+apt install proftpd
+</pre>
+
+*Configura la máquina router-fw para que los servicios web y ftp sean accesibles desde el exterior.*
+
+<pre>
+iptables -t nat -A PREROUTING -i eth0 -p tcp -m multiport --dports 80,443 -j DNAT --to 192.168.200.10
+iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 21 -j DNAT --to 192.168.200.10:21
+iptables -t nat -A POSTROUTING -o eth2 -p tcp --dport 21 -d 192.168.200.10 -j SNAT --to 192.168.200.2
+iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 20 -j DNAT --to 192.168.200.10:21
+iptables -t nat -A POSTROUTING -o eth2 -p tcp --dport 20 -d 192.168.200.10 -j SNAT --to 192.168.200.2
+iptables -A FORWARD -i eth0 -o eth2 -p tcp -m multiport --dports 80,443 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i eth2 -o eth0 -p tcp -m multiport --sports 80,443 -m state --state ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth2 -p tcp --syn --dport 21 -m conntrack --ctstate NEW -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth2 -p tcp --syn --dport 20 -m conntrack --ctstate NEW -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth2  -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -A FORWARD -i eth2 -o eth0  -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+</pre>
+
+Accesibilidad a apache:
+!apacheDMZ.png!
+
+Accesibilidad a ftp:
+<pre>
+alexrr@pc-alex:~$ ftp 172.22.200.218
+Connected to 172.22.200.218.
+220 ProFTPD Server (Debian) [::ffff:192.168.200.10]
+Name (172.22.200.218:alexrr): ftp
+331 Anonymous login ok, send your complete email address as your password
+Password:
+230-Welcome, archive user ftp@192.168.200.2 !
+230-
+230-The local time is: Thu Jan 09 18:27:58 2020
+230-
+230-This is an experimental FTP server.  If you have any unusual problems,
+230-please report them via e-mail to <root@dmz.novalocal>.
+230-
+230 Anonymous access granted, restrictions apply
+Remote system type is UNIX.
+Using binary mode to transfer files.
+ftp> 
+</pre>
+
+

@@ -1,0 +1,421 @@
+Bacula permite la creación de copias de seguridad mediante una aplicación web, y una base de datos mysql.
+
+Instalamos apache y mariadb, junto a php
+
+<pre>
+
+apt install apache2 mariadb-server php
+</pre>
+
+Ahora instalamos bacula
+<pre>
+apt install bacula bacula-client bacula-common-mysql bacula-director-mysql bacula-server
+bacula-241998
+</pre>
+
+Ahora instalaremos webmin, nos dará error de dependencias pero lo arreglaremos instalandolas.
+<pre>
+alexrr@pc-alex:~$ scp Descargas/webmin_1.940_all.deb debian@172.22.200.164:
+
+dpkg -i webmin_1.940_all.deb
+apt install libauthen-pam-perl libio-pty-perl apt-show-versions
+
+apt -f install
+</pre>
+
+Ahora webmin se habrá instalado en el puerto 10000, por lo que debemos en openstack abrirlo y accedemos a la web mediante la ip
+
+http://172.22.200.164:10000
+
+Y entramos con la contraseña y usuario de root
+
+
+Ahora que tenemos webmin, empezaremos con la configuración de bacula
+
+<pre>
+nano /etc/bacula/bacula-dir.conf
+
+Director {                            # define myself
+  Name = choco-dir
+  DIRport = 9101                # where we listen for UA connections
+  QueryFile = "/etc/bacula/scripts/query.sql"
+  WorkingDirectory = "/var/lib/bacula"
+  PidDirectory = "/run/bacula"
+  Maximum Concurrent Jobs = 20
+  Password = "bacula"         # Console password
+  Messages = Daemon
+  DirAddress = 10.0.0.18
+}
+
+JobDefs {
+  Name = "Backups"
+  Type = Backup
+  Level = Incremental
+  Client = choco-fd
+  FileSet = "Full Set"
+  Schedule = "semanal"
+  Storage = File1
+  Messages = Standard
+  Pool = File
+  SpoolAttributes = yes
+  Priority = 10
+  Write Bootstrap = "/var/lib/bacula/%c.bsr"
+}
+</pre>
+
+Ahora vamos a ponerle nombre a las copias que haremos
+
+<pre>
+Job {
+ Name = "choco"
+ JobDefs = "Backups"
+ Client = "choco-fd"
+}
+
+Job {
+ Name = "croqueta"
+ JobDefs = "Backups"
+ Client = "croqueta-fd"
+}
+
+Job {
+ Name = "salmorejo"
+ JobDefs = "Backups"
+ Client = "salmorejo-fd"
+}
+
+Job {
+ Name = "tortilla"
+ JobDefs = "Backups"
+ Client = "tortilla-fd"
+}
+</pre>
+
+Ahora definiremos las tareas de restauración
+
+<pre>
+
+Job {
+ Name = "RestoreChoco"
+ Type = Restore
+ Client=choco-fd
+ FileSet="Full Set"
+ Storage = File
+ Pool = File
+ Messages = Standard
+}
+
+Job {
+ Name = "RestoreCroqueta"
+ Type = Restore
+ Client=croqueta-fd
+ FileSet="Full Set"
+ Storage = File
+ Pool = File
+ Messages = Standard
+}
+
+Job {
+ Name = "RestoreSalmorejo"
+ Type = Restore
+ Client=salmorejo-fd
+ FileSet="Full Set"
+ Storage = File
+ Pool = File
+ Messages = Standard
+}
+
+Job {
+ Name = "RestoreTortilla"
+ Type = Restore
+ Client=tortilla-fd
+ FileSet="Full Set"
+ Storage = File
+ Pool = File
+ Messages = Standard
+}
+</pre>
+
+Ahora vamos a decidir que archivos queremos que copie, en este caso queremos que copie el /etc, /home y /var
+
+<pre>
+FileSet {
+ Name = "Full Set"
+ Include {
+ Options {
+ signature = MD5
+ compression = GZIP
+ }
+ File = /home
+ File = /etc
+ File = /var
+ }
+ Exclude {
+ File = /var/lib/bacula
+ File = /nonexistant/path/to/file/archive/dir
+ File = /proc
+ File = /var/cache
+ File = /var/tmp
+ File = /tmp
+ File = /sys
+ File = /.journal
+ File = /.fsck
+ }
+}
+</pre>
+
+Ahora vamos a hacer el ciclo de bacula
+
+<pre>
+Schedule {
+ Name = semanal
+ Run = Level=Full sun at 23:05
+ Run = Level=Incremental mon-sat at 23:05
+}
+</pre>
+
+Ahora vamos a configurar los clientes
+<pre>
+Client {
+ Name = choco-fd
+ Address = 10.0.0.18
+ FDPort = 9102
+ Catalog = MyCatalog
+ Password = "bacula" # password for FileDaemon
+ File Retention = 60 days # 60 days
+ Job Retention = 6 months # six months
+ AutoPrune = yes # Prune expired Jobs/Files
+}
+
+Client {
+ Name = croqueta-fd
+ Address = 10.0.0.15
+ FDPort = 9102
+ Catalog = MyCatalog
+ Password = "bacula" # password for FileDaemon 2
+ File Retention = 60 days # 60 days
+ Job Retention = 6 months # six months
+ AutoPrune = yes # Prune expired Jobs/Files
+}
+
+Client {
+ Name = salmorejo-fd
+ Address = 10.0.0.11
+ FDPort = 9102
+ Catalog = MyCatalog
+ Password = "bacula" # password for FileDaemon 2
+ File Retention = 60 days # 60 days
+ Job Retention = 6 months # six months
+ AutoPrune = yes # Prune expired Jobs/Files
+}
+
+Client {
+ Name = tortilla-fd
+ Address = 10.0.0.7
+ FDPort = 9102
+ Catalog = MyCatalog
+ Password = "bacula" # password for FileDaemon 2
+ File Retention = 60 days # 60 days
+ Job Retention = 6 months # six months
+ AutoPrune = yes # Prune expired Jobs/Files
+}
+</pre>
+
+A continuación debemos especificar el tipo de almacenamiento que queremos
+
+<pre>
+Storage {
+ Name = File
+# Do not use "localhost" here
+ Address = 10.0.0.18 # N.B. Use a fully qualified name here
+ SDPort = 9103
+ Password = "bacula"
+ Device = FileChgr1
+ Media Type = File
+ Maximum Concurrent Jobs = 10 # run up to 10 jobs a the same time
+}
+</pre>
+
+
+Lo último que tenemos que hacer es poner la base de datos
+<pre>
+Catalog {
+ Name = MyCatalog
+ dbname = "bacula"; DB Address = "localhost"; dbuser = "bacula"; dbpassword = "bacula"
+}
+</pre>
+
+Hacemos el pool
+<pre>
+Pool {
+ Name = File
+ Pool Type = Backup
+ Recycle = yes # Bacula can automatically recycle Volumes
+ AutoPrune = yes # Prune expired volumes
+ Volume Retention = 365 days # one year
+ Maximum Volume Bytes = 50G # Limit Volume size to something reasonable
+ Maximum Volumes = 100 # Limit number of Volumes in Pool
+ Label Format = "Remoto" # Auto label
+}
+</pre>
+
+
+También vamos a hacer una configuración que guarde las copias cada año
+<pre>
+#anual
+JobDefs {
+ Name = "Backups-anual"
+ Type = Backup
+ Level = Full
+ Client = choco-fd
+ FileSet = "Full Set"
+ Schedule = "anual"
+ Storage = File
+ Messages = Standard
+ Pool = File
+ SpoolAttributes = yes
+ Priority = 10
+ Write Bootstrap = "/var/lib/bacula/%c.bsr"
+}
+
+#anual
+Job {
+ Name = "choco-anual"
+ JobDefs = "Backups-anual"
+ Client = "choco-fd-anual"
+}
+
+Job {
+ Name = "croqueta-anual"
+ JobDefs = "Backups-anual"
+ Client = "croqueta-fd-anual"
+}
+
+Job {
+ Name = "salmorejo-anual"
+ JobDefs = "Backups-anual"
+ Client = "salmorejo-fd-anual"
+}
+
+Job {
+ Name = "tortilla-anual"
+ JobDefs = "Backups-anual"
+ Client = "tortilla-fd-anual"
+}
+
+#Restore anual
+Job {
+ Name = "RestoreChoco-anual"
+ Type = Restore
+ Client=choco-fd-anual
+ FileSet="Full Set"
+ Storage = File
+ Pool = File
+ Messages = Standard
+}
+
+Job {
+ Name = "RestoreCroqueta-anual"
+ Type = Restore
+ Client=croqueta-fd-anual
+ FileSet="Full Set"
+ Storage = File
+ Pool = File
+ Messages = Standard
+}
+
+Job {
+ Name = "RestoreSalmorejo-anual"
+ Type = Restore
+ Client=salmorejo-fd-anual
+ FileSet="Full Set"
+ Storage = File
+ Pool = File
+ Messages = Standard
+}
+
+Job {
+ Name = "RestoreTortilla-anual"
+ Type = Restore
+ Client=tortilla-fd-anual
+ FileSet="Full Set"
+ Storage = File
+ Pool = File
+ Messages = Standard
+}
+
+#schedule anual
+Schedule {
+ Name = anual
+ Run = Full on 31 Dec at 23:50
+}
+
+#Clientes anual
+
+Client {
+ Name = choco-fd-anual
+ Address = 10.0.0.18
+ FDPort = 9102
+ Catalog = MyCatalog
+ Password = "bacula" # password for FileDaemon
+ File Retention = 15 years # 60 days
+ Job Retention = 15 years # six months
+ AutoPrune = yes # Prune expired Jobs/Files
+}
+
+Client {
+ Name = croqueta-fd-anual
+ Address = 10.0.0.15
+ FDPort = 9102
+ Catalog = MyCatalog
+ Password = "bacula" # password for FileDaemon 2
+ File Retention = 15 years # 60 days
+ Job Retention = 15 years # six months
+ AutoPrune = yes # Prune expired Jobs/Files
+}
+
+Client {
+ Name = salmorejo-fd-anual
+ Address = 10.0.0.11
+ FDPort = 9102
+ Catalog = MyCatalog
+ Password = "bacula" # password for FileDaemon 2
+ File Retention = 15 years # 60 days
+ Job Retention = 15 years # six months
+ AutoPrune = yes # Prune expired Jobs/Files
+}
+
+Client {
+ Name = tortilla-fd-anual
+ Address = 10.0.0.7
+ FDPort = 9102
+ Catalog = MyCatalog
+ Password = "bacula" # password for FileDaemon 2
+ File Retention = 15 years # 60 days
+ Job Retention = 15 years # six months
+ AutoPrune = yes # Prune expired Jobs/Files
+}
+</pre>
+
+Comprobamos que no haya ningún error haciendo
+<pre>
+bacula-dir -tc /etc/bacula/bacula-dir.conf
+</pre>
+
+Sino devuelve nada esque la configuración está bien.
+
+Ahora vamos a hacer que las copias de seguridad se guarden en un volumen a parte
+<pre>
+root@choco:/etc/apache2/sites-available# mkdir /bacula
+root@choco:/etc/apache2/sites-available# mount /dev/vdb1 /bacula
+
+root@choco:/bacula# mkdir backups
+root@choco:/bacula# chown bacula: -R /bacula/backups/
+root@choco:/bacula# chmod 755 /bacula/backups/
+</pre>
+
+
+Ahora vamos a meter el disco en el fstab
+<pre>
+UUID=36c8417a-9e41-4922-87e0-f00c477dbb8e     /bacula     ext4     defaults     0     2
+</pre>

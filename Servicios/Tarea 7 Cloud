@@ -1,0 +1,85 @@
+h2. Tarea 7) Hosting (SERVICIOS)
+
+Vamos a instalar phpMyAdmin en la máquina salmorejo, por lo que tendremos que instalar varios módulos de php para que funcione.
+<pre>
+yum install -y php-json php-mbstring php-json php-mbstring
+</pre>
+
+Ahora nos descargaremos el phpMyAdmin mediante la página oficial
+<pre>
+wget https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-languages.zip
+</pre>
+Extraemos
+<pre>
+unzip phpMyAdmin-latest-all-languages.zip
+</pre>
+
+Vamos a poner phpmyadmin en la localización que queramos
+<pre>
+mv phpMyAdmin-4.9.2-all-languages/ /var/www/phpMyAdmin
+</pre>
+
+Ahora vamos a configurar phpMyAdmin
+<pre>
+cp /var/www/phpMyAdmin/config.sample.inc.php /var/www/phpMyAdmin/config.inc.php
+</pre>
+
+Configuración:
+<pre>
+$cfg['blowfish_secret'] = 'v=3Rnnn4[]PS4yUlCqY}Z[D7XifU]qBP';
+$cfg['Servers'][$i]['host'] = 'tortillaint.alejandro.gonzalonazareno.org';
+</pre>
+
+Ahora vamos a configurar el virtual host de nginx
+<pre>
+server {
+        listen 80;
+        server_name sql.alejandro.gonzalonazareno.org;
+        return 301 https://$server_name$request_uri;
+}
+
+
+server {
+        listen 443 ssl;
+	ssl_certificate /etc/nginx/cert/salmorejo.alejandro.gonzalonazareno.org.crt;
+        ssl_certificate_key /etc/nginx/cert/salmorejo.alejandro.gonzalonazareno.org.key;
+        root /var/www/phpMyAdmin;
+
+        index index.html index.htm index.nginx-debian.html index.php;
+
+        server_name sql.alejandro.gonzalonazareno.org;
+        location / {
+		index index.php;
+                try_files $uri $uri/ =404;
+        }
+	location ~ \.php$ {
+		try_files $uri $uri/ =404;
+		fastcgi_pass 127.0.0.1:9000;
+		fastcgi_index index.php;
+		fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+		include fastcgi_params;
+	}
+	if (!-e $request_filename)
+	{
+	    rewrite ^(.+)$ /index.php?q=$1 last;
+	}
+}
+</pre>
+
+Y hacemos que el virtual host funcione
+<pre>
+ln -s /etc/nginx/sites-available/phpmyadmin.conf /etc/nginx/sites-enabled/
+systemctl restart nginx
+</pre>
+
+Para que tengamos el dns entramos a croqueta y escribimos
+<pre>
+sql             IN      CNAME   salmorejo
+</pre>
+
+!phpmyadmin.png!
+
+
+Ahora queremos que funcione el servicio de ftp para los distintos usuarios, tendremos que instalarlo en salmorejo ya que será ahí donde estarán todas las páginas web.
+
+

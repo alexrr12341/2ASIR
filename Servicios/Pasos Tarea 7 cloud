@@ -1,0 +1,18 @@
+Paso 0-
+Configurar dos nombres ftp y sql
+Instalar un phpmyadmin
+Y instalar proftpd. <- LDAP (ldap.conf)
+
+Paso 1-
+Crear el Usuario (En el sistema o en el LDAP).
+
+Paso 2-
+Crear un Virtual Host en el servidor Web (salmorejo).
+Hacemos coincidir el Document Root con el Default Root del FTP.
+
+Paso 3-
+Crear un registro CNAME con el nombre del virtual host.
+
+Paso 4-
+Crear el usuario de la base de datos y la base de datos.
+

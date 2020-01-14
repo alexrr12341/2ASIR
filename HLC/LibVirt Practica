@@ -1,0 +1,216 @@
+Realiza el proceso de migración de una máquina virtual que está ejecutando un servicio PostgreSQL desde tu propio hipervisor al situado en la dirección 172.22.200.10, estando en todo momento los datos del servidor PostgreSQL en un volumen independiente.
+
+Cuanto mayor sea el nivel de automatismo de la tarea más alta será la calificación.
+
+FASE 1:
+- Crear una MV en libvirt/KVM de tu equipo conectado a una red interna que tenga salida por NAT usando la imagen de buster del NAS y con aprovisionamiento ligero (MV1).
+Primero vamos a crear el aprovisionamiento ligero s
+<pre>
+qemu-img create -b buster.qcow2 -f qcow2 buster1.qcow2
+</pre>
+
+Ahora hacemos la NAT (nat.xml):
+<pre>
+
+<network> 
+ <name>red_libvirt</name> 
+    <forward mode="nat"/> 
+    <ip address="10.20.10.1" netmask="255.255.255.0"> 
+        <dhcp> 
+           <range start="10.20.10.1" end="10.20.10.50"/> 
+        </dhcp> 
+    </ip> 
+</network>
+
+</pre>
+
+Y vamos a lanzar la red a libvirt
+<pre>
+virsh -c qemu:///system net-define nat.xml
+virsh -c qemu:///system net-autostart red_libvirt
+virsh -c qemu:///system net-start red_libvirt
+</pre>
+
+Vamos a comprobar que efectivamente esta hecha
+<pre>
+alexrr@pc-alex:~/libvirt$ virsh -c qemu:///system net-list
+ Name          State    Autostart   Persistent
+------------------------------------------------
+ red_libvirt   active   yes         yes
+
+</pre>
+
+- Configurar la RAM disponible a 500 MiB
+Vamos ahora a lanzar la máquina
+<pre>
+virt-install --connect qemu:///system --name debianlibvirt \
+--memory 500 --disk path=/home/alexrr/libvirt/buster1.qcow2 \
+--vcpus=1 --boot hd --vnc --os-type linux --os-variant=debian10 \
+--network network=red_libvirt --noautoconsole --hvm --keymap es
+
+Empezando la instalación...
+Creación de dominio completada.
+</pre>
+
+
+- Crear un fichero adicional de 200 MiB y conectarlo a MV1 a través de libvirt
+Vamos a crear el fichero de 200 MiB
+<pre>
+alexrr@pc-alex:~/libvirt$ dd if=/dev/zero of=postgres.img bs=1M count=200
+200+0 registros leídos
+200+0 registros escritos
+209715200 bytes (210 MB, 200 MiB) copied, 0,1409 s, 1,5 GB/s
+</pre>
+
+Y ahora vamos a inyectarselo a nuestra máquina
+
+<pre>
+virsh -c qemu:///system attach-disk debianlibvirt \
+--source /home/alexrr/libvirt/postgres.img \
+--target vdb \
+--persistent
+</pre>
+
+- Instalar PostgreSQL y ubicar el directorio /var/lib/postgresql en el volumen asociado al fichero adicional (muy importante comprobar permisos y propietarios)
+Vamos a instalar postgreSQL:
+<pre>
+apt install postgresql
+</pre>
+
+Ahora vamos a mover el directorio /var/lib/postgresql
+
+Primero haremos una copia de seguridad
+<pre>
+cp -r /var/lib/postgresql /var/lib/postgresql.old
+</pre>
+
+Ahora montaremos el fichero de volumen
+<pre>
+root@buster:/mnt# mkdir postgresql
+root@buster:/mnt# mount /dev/vdb postgresql/
+</pre>
+
+
+Copiamos ahora el directorio en nuestro volumen
+<pre>
+root@buster:/mnt# cp -dpR /var/lib/postgresql/* postgresql/
+</pre>
+
+Desmontamos el volumen
+<pre>
+root@buster:/mnt# umount postgresql/
+</pre>
+
+Y lo montamos en la ubicación anterior
+<pre>
+root@buster:/mnt# mount -t ext4 /dev/vdb /var/lib/postgresql
+</pre>
+
+Miramos si efectivamente se ha montado en el lugar que queremos
+<pre>
+root@buster:/var/lib/postgresql# lsblk -f
+NAME   FSTYPE LABEL UUID                                 FSAVAIL FSUSE% MOUNTPOINT
+vda                                                                     
+└─vda1 ext4         3a5bcd56-9ba3-4ed1-b119-287dd7f69596      8G    13% /
+vdb    ext4         ae9c2b4f-8f95-4923-b2a6-18db2eaf95de  135,3M    21% /var/lib/postgresql
+</pre>
+
+- Poblar la base de datos
+Vamos a poblar la base de datos con varias tablas
+<pre>
+Create table Viveros
+(
+Codigo Varchar(5),
+Direccion Varchar(150),
+Telefono Varchar(9),
+CONSTRAINT pk_Codigo_Vivero PRIMARY KEY (Codigo),
+CONSTRAINT direccionvivero_correcta check(Direccion like '%(Dos Hermanas)' or Direccion like '%(Alcala)' or Direccion like '%(Gelves)')
+);
+
+Create table Empleados
+(
+DNI Varchar(9),
+Nombre Varchar(20),
+Apellido Varchar(20),
+Direccion Varchar(150),
+eMail Varchar(100),
+CONSTRAINT pk_DNI_Empleados PRIMARY KEY (DNI),
+CONSTRAINT dnicliente_correcto check(DNI ~ '^([0-9]{8}[A-Z])$' or DNI ~ '^([KLMXYZ][0-9]{7}[A-Z])$'),
+CONSTRAINT correoelectronico_correcto check(eMail like '%@%.es' or eMail like '%@%.com' or eMail like '%@%.org' or eMail like '%@%.net')
+);
+
+
+insert into Viveros(Codigo,Direccion,Telefono)
+values('12345','Ctra. Dos Hermanas Utrera km, 3, 41702 Sevilla (Dos Hermanas)','954720244');
+insert into Viveros(Codigo,Direccion,Telefono)
+values('12114','Carretera Montequinto a Dos Hermanas, Km 2.5, 41089 Sevilla (Dos Hermanas)','854537288');
+insert into Viveros(Codigo,Direccion,Telefono)
+values('11567','Calle Mar Báltico, 3, 41927 Mairena del Aljarafe, Sevilla(Gelves)','955600977');
+insert into Viveros(Codigo,Direccion,Telefono)
+values('64443','Viveros Molina, Autovia A—376 Km, 10,5 Frente a, 41500, Sevilla(Alcala)','615033716');
+
+insert into Empleados(DNI,Nombre,Apellido,Direccion,eMail)
+values('49123425W','Manuel','Perez Fernandez','C/Alarcon Nº1,Dos Hermanas','manuelpf@gmail.com');
+insert into Empleados(DNI,Nombre,Apellido,Direccion,eMail)
+values('45321357H','Felipe','Gutierrez Rodríguez','C/San Juan Nº3,Dos Hermanas','felipeguti@gmail.es');
+insert into Empleados(DNI,Nombre,Apellido,Direccion,eMail)
+values('23531234A','Luis','Vázquez Schrodinger','C/Ceuta Nº10,Gelves','luisaostuff@gmail.org');
+insert into Empleados(DNI,Nombre,Apellido,Direccion,eMail)
+values('43213567V','Benito','Adanez Alves','C/Bolivia Nº22,Gelves','benitoaa@gmail.es');
+insert into Empleados(DNI,Nombre,Apellido,Direccion,eMail)
+values('94523421E','Francisco','Ansúrez Álvarez','C/Gravina Nº22,Alcala','faa232@gmail.es');
+insert into Empleados(DNI,Nombre,Apellido,Direccion,eMail)
+values('32953215B','Jose','Dominguez Ferris','C/Grecia Nº32,Alcala','josedomferris@gmail.es');
+</pre>
+
+- Crear una regla de iptables que redirija las peticiones al puerto 5432/tcp que se realicen desde fuera a MV1 para que la base de datos sea accesible desde el exterior.
+
+Primero vamos a /etc/postgresql/11/main/postgresql.conf y editamos la siguiente línea
+<pre>
+listen_addresses = '*'
+</pre>
+Y también a /etc/postgresql/11/main/pg_hda.conf
+<pre>
+# IPv4 local connections:
+host    all             all             all                    md5
+</pre>
+
+
+
+Miramos si podemos conectarnos por la NAT
+<pre>
+alexrr@pc-alex:~/libvirt$ psql -h 10.20.10.10 -U usuario
+Contraseña para usuario usuario: 
+psql (11.5 (Debian 11.5-1+deb10u1))
+conexión SSL (protocolo: TLSv1.3, cifrado: TLS_AES_256_GCM_SHA384, bits: 256, compresión: desactivado)
+Digite «help» para obtener ayuda.
+
+usuario=> 
+</pre>
+
+Habilitamos el acceso a postgresql desde el exterior
+<pre>
+echo 1 > /proc/sys/net/ipv4/ip_forward
+iptables -t nat -A PREROUTING -p tcp --dport 5432 -i enp7s0 -j DNAT --to 10.20.10.21
+iptables -t nat -A POSTROUTING -p tcp --sport 5432 -s 10.20.10.0/24 -j MASQUERADE
+</pre>
+
+- Crear un registro en el DNS para el servicio
+
+FASE 2:
+
+- Monitorizar el uso de RAM de MV1 de manera que comience la migración en el momento que el uso de RAM supere el 90%
+- Crear una MV en libvirt/KVM remoto conectado a la red interna 10.0.1.0/24 que tiene salida por NAT usando la imagen de buster del NAS y con aprovisionamiento ligero (MV2).
+- Configurar la RAM disponible para MV2 a 1 GiB
+- Instalar PostgreSQL en MV2
+- Crear una regla de iptables que redirija las peticiones al puerto 5432/tcp que se realicen desde fuera a MV2 para que la base de datos sea accesible desde el exterior.
+- Parar el servicio PostgreSQL en MV1
+- Desconectar el volumen adicional de MV1, redimensionarlo a 400 MiB (también el sistema de ficheros), copiarlo y conectarlo a MV2.
+- Montar el volumen adicional en /var/lib/postgresql y reiniciar el servicio PostgreSQL en KVM verificando permisos y propietarios.
+- Actualizar el registro DNS para que el servicio lo preste ahora MV2
+- Comprobar el funcionamiento
+
+FASE 3:
+
+- Monitorizar MV2 y cuando el uso de RAM llegue al 90%, subir la RAM asignada a 2 GiB en vivo.
+

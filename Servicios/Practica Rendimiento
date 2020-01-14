@@ -1,0 +1,198 @@
+h2. Módulo php5-apache2
+
+Primero de todo vamos a instalar apache2
+<pre>
+apt install apache2
+</pre>
+
+Y ahora vamos a instalar el módulo de apache-php
+<pre>
+apt install libapache2-mod-php
+</pre>
+
+!phpinfomod.png!
+
+También vamos a instalar mariadb
+<pre>
+apt install mariadb-server
+</pre>
+
+Creamos nuestra base de datos
+<pre>
+create database wordpress;
+create user wordpress identified by 'wordpress';
+grant all privileges on wordpress.* to wordpress;
+flush privileges;
+</pre>
+
+Instalamos la extension de mysql
+<pre>
+apt install php-mysql
+</pre>
+
+Vamos a comprobar que nuestro wordpress funcione
+!wordpressmod.png!
+
+Vamos a acceder para ver si podemos subir fotos
+!wordpressmodfoto1.png!
+
+Y para configurarlo vamos a /etc/php/7.3/apache2/php.ini
+<pre>
+upload_max_filesize = 10M
+</pre>
+
+Ahora miramos si se ha cambiado
+!wordpressmodfoto2.png!
+
+Ahora vamos a realizar un mini estudio de 5 intentos para ver cual es la media
+<pre>
+ab -t 10 -c 200 http://172.22.8.28/wordpress/index.php
+</pre>
+
+<pre>
+1-56.24
+2-58.33
+3-63.20
+4-53.64
+5-62.32
+</pre>
+
+La media sería de 58,746 peticiones.
+
+h2. PHP-FPM (socket unix) + apache2
+
+Instalamos php-fpm
+<pre>
+apt install php-fpm
+systemctl start php7.3-fpm php7.3
+</pre>
+
+Desactivamos el prefork y activamos el event
+<pre>
+a2dismod mpm_prefork
+a2enmod mpm_event
+</pre>
+
+y activamos el socket en /etc/php/7.3/fpm/pool.d/www.conf
+<pre>
+listen = /run/php/php7.3-fpm.sock
+</pre>
+
+Ahora vamos a instalar el programa para que ejecute cgi-fcgi
+<pre>
+apt-get install libfcgi0ldbl
+</pre>
+
+Y metemos los modulos para que actue como proxy inverso
+<pre>
+a2enmod proxy_fcgi setenvif
+</pre>
+
+Y en /etc/apache2/conf-available/php7.3-fpm.conf ponemos
+<pre>
+        <FilesMatch "\.php$">
+                SetHandler "proxy:unix:/run/php/php7.3-fpm.sock|fcgi://127.0.0.1/"
+        </FilesMatch>
+</pre>
+
+!phpinfofpmsocket.png!
+
+Y vemos el wordpress
+!wordpressfpmsocket.png!
+
+!wordpressfpmsocketfoto1.png!
+
+Y para cambiar el tamaño de las fotos vamos a /etc/php/7.3/fpm/php.ini y ponemos
+<pre>
+upload_max_filesize = 15M
+post_max_size = 15M
+</pre>
+!wordpressfpmsocketfoto2.png!
+
+Ahora realizaremos el test de rendimiento
+<pre>
+ab -t 10 -c 200 http://172.22.8.28/wordpress/index.php
+</pre>
+
+<pre>
+1-103.55
+2-107.70
+3-104.67
+4-106.04
+5-108.47
+</pre>
+
+La media sería de 106,086 peticiones
+
+h2. PHP-FPM (socket TCP) + apache2
+
+Para activar el socket unix simplemente vamos a /etc/php/7.3/fpm/pool.d/www.conf ponemos
+<pre>
+listen = 127.0.0.1:9000
+</pre>
+
+Y en /etc/apache2/conf-available/php7.3-fpm.conf ponemos
+<pre>
+        <FilesMatch "\.php$">
+                SetHandler "proxy:fcgi://127.0.0.1:9000"
+        </FilesMatch>
+</pre>
+
+!phpinfofpmtcp.png!
+
+Vamos a ver el wordpress
+!wordpressfpmtcp.png!
+
+!wordpressfpmtcpfoto1.png!
+
+Y si queremos cambiar el tamaño pues es donde cambiamos el fpm antes
+<pre>
+upload_max_filesize = 20M
+post_max_size = 20M
+</pre>
+!wordpressfpmtcpfoto2.png!
+
+Y vamos a comprobar el test de rendimiento
+<pre>
+ab -t 10 -c 200 http://172.22.8.28/wordpress/index.php
+</pre>
+
+<pre>
+1-109.28
+2-108.14
+3-108.90
+4-108.98
+5-109.41
+</pre>
+
+La media seria de 108,942 peticiones
+
+h2. PHP-FPM (socket unix) + nginx
+
+Instalamos nginx y php-fpm
+<pre>
+apt install nginx
+apt install php7.3-fpm php7.3
+</pre>
+
+Configuramos php-fpm en /etc/php/7.3/fpm/pool.d/www.conf
+<pre>
+listen = /run/php/php7.3-fpm.sock
+</pre>
+
+Y en /etc/nginx/sites-availabe/wordpress ponemos
+<pre>
+ location ~ \.php$ {
+                include snippets/fastcgi-php.conf;
+
+        #       # With php-fpm (or other unix sockets):
+                fastcgi_pass unix:/run/php/php7.3-fpm.sock;
+        #       # With php-cgi (or other tcp sockets):
+        #       fastcgi_pass 127.0.0.1:9000;
+        }
+</pre>
+
+!phpinfonginxfpmsocket.png!
+
+Y miramos el wordpress
+!wordpressnginxfpmsocket.png!

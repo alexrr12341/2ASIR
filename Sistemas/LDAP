@@ -1,0 +1,405 @@
+Vamos a crear primero las unidades organizativas de usuarios y grupos para empezar a hacer el ejercicio.
+
+Fichero organizacion.ldif:
+<pre>
+dn: ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+objectClass: top
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org
+objectClass: top
+objectClass: organizationalUnit
+ou: Group
+</pre>
+
+Y las añadimos con
+<pre>
+root@croqueta:/home/debian# ldapadd -x -D 'cn=admin,dc=alejandro,dc=gonzalonazareno,dc=org' -W -f organizacion.ldif 
+Enter LDAP Password: 
+adding new entry "ou=People,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+adding new entry "ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org"
+</pre>
+
+
+Vamos ahora a crear los grupos en el fichero grupos.ldif
+<pre>
+dn: cn=comercial,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org
+objectClass: top
+objectClass: groupOfNames
+cn: comercial
+member:
+
+dn: cn=almacen,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org
+objectClass: top
+objectClass: groupOfNames
+cn: almacen
+member:
+
+dn: cn=admin,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org
+objectClass: top
+objectClass: groupOfNames
+cn: admin
+member:
+</pre>
+
+Y los añadimos con
+<pre>
+root@croqueta:/home/debian# ldapadd -x -D 'cn=admin,dc=alejandro,dc=gonzalonazareno,dc=org' -W -f grupos.ldif 
+Enter LDAP Password: 
+adding new entry "cn=comercial,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+adding new entry "cn=almacen,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+adding new entry "cn=admin,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org"
+</pre>
+
+Vamos a crear ahora los 10 usuarios en usuarios.ldif
+<pre>	
+dn: uid=Cristiano,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+objectClass: top
+objectClass: posixAccount
+objectClass: inetOrgPerson
+cn:: Q3Jpc3RpYW5vIFJvbmFsZG8gZG9zIFNhbnRvcyBBdmVpcm8K
+uid: Cristiano
+uidNumber: 2000
+gidNumber: 2000
+homeDirectory: /home/Cristiano
+loginShell: /bin/bash
+userPassword: {SSHA}T4qLORGRlMYxy74ZTU7Ff8zAP9NYp/y9
+sn:: Um9uYWxkbwo=
+mail: cristianoronaldo@gmail.com
+givenName: Ronaldo
+
+dn: uid=Messi,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+objectClass: top
+objectClass: posixAccount
+objectClass: inetOrgPerson
+cn:: TGlvbmVsIEFuZHLDqXMgTWVzc2kK
+uid: Messi
+uidNumber: 2001
+gidNumber: 2000
+homeDirectory: /home/Messi
+loginShell: /bin/bash
+userPassword: {SSHA}yecFakGMsPtCUJw9n9Y1J2TJYk4kOnzY
+sn:: TWVzc2kK
+mail: lionelmessi@gmail.com
+givenName: Messi
+
+dn: uid=Pele,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+objectClass: top
+objectClass: posixAccount
+objectClass: inetOrgPerson
+cn:: RWRzb24gQXJhbnRlcyBkbyBOYXNjaW1lbnRvCg==
+uid: Pele
+uidNumber: 2002
+gidNumber: 2000
+homeDirectory: /home/Pele
+loginShell: /bin/bash
+userPassword: {SSHA}J7OIxBiKBtM3p9HYF6SMDvzHT3LkeuGp
+sn:: QXJhbnRlcyBkbyBOYXNjaW1lbnRvCg==
+mail: Pele@gmail.com
+givenName: Pele
+
+dn: uid=Joaquin,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+objectClass: top
+objectClass: posixAccount
+objectClass: inetOrgPerson
+cn:: Sm9hcXXDrW4gU8OhbmNoZXogUm9kcsOtZ3Vlego=
+uid: Joaquin
+uidNumber: 2003
+gidNumber: 2000
+homeDirectory: /home/Joaquin
+loginShell: /bin/bash
+userPassword: {SSHA}G3MlHiPUsfm8hV2y2PZtoXn+XiF5hulz
+sn:: U8OhbmNoZXoK
+mail: Joaquinbetis@gmail.com
+givenName: Joaquin
+
+dn: uid=Etoo,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+objectClass: top
+objectClass: posixAccount
+objectClass: inetOrgPerson
+cn:: U2FtdWVsIEV0bydvIEZpbHMK
+uid: Etoo
+uidNumber: 2004
+gidNumber: 2000
+homeDirectory: /home/Etoo
+loginShell: /bin/bash
+userPassword: {SSHA}vZhavav3ft3r4LSv3pT9fTGDeIlgVclZ
+sn:: RXRvJ28gRmlscwo=
+mail: etoobarcelona@gmail.com
+givenName: Etoo
+
+dn: uid=Ronaldinho,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+objectClass: top
+objectClass: posixAccount
+objectClass: inetOrgPerson
+cn:: Um9uYWxkbyBkZSBBc3NpcyBNb3JlaXJhCg==
+uid: Ronaldinho
+uidNumber: 2005
+gidNumber: 2000
+homeDirectory: /home/Ronaldinho
+loginShell: /bin/bash
+userPassword: {SSHA}wSZIjndz0qHLmh4RV4NuLGFZDZ6TiDii
+sn:: QXNzaXMgTW9yZWlyYQo=
+mail: ronaldinhobarcelona@gmail.com
+givenName: Ronaldinho
+
+dn: uid=Neymar,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+objectClass: top
+objectClass: posixAccount
+objectClass: inetOrgPerson
+cn:: TmV5bWFyIGRhIFNpbHZhIFNhbnRvcyBKw7puaW9yCg==
+uid: Ronaldinho
+uidNumber: 2006
+gidNumber: 2000
+homeDirectory: /home/Neymar
+loginShell: /bin/bash
+userPassword: {SSHA}iLTUN9WC+UD4eHO2qmxMlv0GXhlVAQrk
+sn:: ZGEgU2lsdmEgU2FudG9zIErDum5pb3IK
+mail: neymarjr@gmail.com
+givenName: Neymar
+
+dn: uid=Henry,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+objectClass: top
+objectClass: posixAccount
+objectClass: inetOrgPerson
+cn:: VGhpZXJyeSBEYW5pZWwgSGVucnkK
+uid: Henry
+uidNumber: 2007
+gidNumber: 2000
+homeDirectory: /home/Henry
+loginShell: /bin/bash
+userPassword: {SSHA}J2u+MpIFjSSvGtokACl1l1x3bZVFphB5
+sn:: RGFuaWVsIEhlbnJ5Cg==
+mail: henry@gmail.com
+givenName: Henry
+
+dn: uid=Torres,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+objectClass: top
+objectClass: posixAccount
+objectClass: inetOrgPerson
+cn:: RmVybmFuZG8gSm9zw6kgVG9ycmVzIFNhbnoK
+uid: Torres
+uidNumber: 2008
+gidNumber: 2000
+homeDirectory: /home/Torres
+loginShell: /bin/bash
+userPassword: {SSHA}RoCOXA2vvrECVGazjBiXXiSD0Jw3Jd4p
+sn:: VG9ycmVzIFNhbnoK
+mail: fernandotorres@gmail.com
+givenName: Torres
+
+dn: uid=Villa,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+objectClass: top
+objectClass: posixAccount
+objectClass: inetOrgPerson
+cn:: RGF2aWQgVmlsbGEgU8OhbmNoZXoK
+uid: Villa
+uidNumber: 2009
+gidNumber: 2000
+homeDirectory: /home/Villa
+loginShell: /bin/bash
+userPassword: {SSHA}EZuVTUoyV6NlK4gVopE+ZVCt/gf9UTdx
+sn:: VmlsbGEgU8OhbmNoZXoK
+mail: davidvilla@gmail.com
+givenName: Villa
+</pre>
+
+Y los añadimos:
+<pre>
+root@croqueta:/home/debian# ldapadd -x -D 'cn=admin,dc=alejandro,dc=gonzalonazareno,dc=org' -W -f usuarios.ldif 
+Enter LDAP Password: 
+adding new entry "uid=Cristiano,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+adding new entry "uid=Messi,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+adding new entry "uid=Pele,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+adding new entry "uid=Joaquin,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+adding new entry "uid=Etoo,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+adding new entry "uid=Ronaldinho,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+adding new entry "uid=Neymar,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+adding new entry "uid=Henry,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+adding new entry "uid=Torres,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+adding new entry "uid=Villa,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org"
+</pre>
+
+Ahora añadimos a un usuario solo al grupo comercial:
+
+<pre>
+dn: cn=comercial,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org
+changetype: modify
+add: member
+member: uid=Etoo,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+</pre>
+
+Ahora añadimos a un usuario solo al grupo almacen:
+
+<pre>
+dn: cn=almacen,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org
+changetype: modify
+add: member
+member: uid=Villa,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+</pre>
+
+Ahora añadimos a un usuario al grupo almacen y comercial
+
+<pre>
+dn: cn=comercial,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org
+changetype: modify
+add: member
+member: uid=Joaquin,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+
+dn: cn=almacen,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org
+changetype: modify
+add: member
+member: uid=Joaquin,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+</pre>
+
+Ahora añadimos a un usuario al grupo admin y comercial
+
+<pre>
+dn: cn=admin,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org
+changetype: modify
+add: member
+member: uid=Henry,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+
+dn: cn=comercial,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org
+changetype: modify
+add: member
+member: uid=Henry,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+</pre>
+
+Ahora añadimos a un usuario al grupo admin
+
+<pre>
+dn: cn=admin,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org
+changetype: modify
+add: member
+member: uid=Messi,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+</pre>
+
+Todo esto lo meteríamos dentro de un solo fichero _ldif_ para facilitarnos las cosas. Aplicar
+íamos los cambios ejecutando:
+
+<pre>
+root@croqueta:/home/debian# ldapmodify -x -D cn=admin,dc=alejandro,dc=gonzalonazareno,dc=org -W -f grupitos.ldif
+Enter LDAP Password: 
+modifying entry "cn=comercial,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+modifying entry "cn=almacen,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+modifying entry "cn=comercial,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+modifying entry "cn=almacen,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+modifying entry "cn=admin,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+modifying entry "cn=comercial,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org"
+
+modifying entry "cn=admin,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org"
+</pre>
+
+Ahora vamos a modificar LDAP para que se puedan obtener los grupos a los que pertenece cada usuario a través del atributo memberOf
+
+
+Fichero memberofconfig.ldif
+<pre>
+dn: cn=module,cn=config
+cn: module
+objectClass: olcModuleList
+objectclass: top
+olcModuleLoad: memberof.la
+olcModulePath: /usr/lib/ldap
+
+dn: olcOverlay={0}memberof,olcDatabase={1}mdb,cn=config
+objectClass: olcConfig
+objectClass: olcMemberOf
+objectClass: olcOverlayConfig
+objectClass: top
+olcOverlay: memberof
+olcMemberOfDangling: ignore
+olcMemberOfRefInt: TRUE
+olcMemberOfGroupOC: groupOfNames
+olcMemberOfMemberAD: member
+olcMemberOfMemberOfAD: memberOf
+</pre>
+
+Fichero refint.ldif
+<pre>
+dn: cn=module,cn=config
+cn: module
+objectclass: olcModuleList
+objectclass: top
+olcmoduleload: refint.la
+olcmodulepath: /usr/lib/ldap
+
+dn: olcOverlay={1}refint,olcDatabase={1}mdb,cn=config
+objectClass: olcConfig
+objectClass: olcOverlayConfig
+objectClass: olcRefintConfig
+objectClass: top
+olcOverlay: {1}refint
+olcRefintAttribute: memberof member manager owner
+</pre>
+
+Y añadimos la configuración tal que así
+<pre>
+root@croqueta:/home/debian# sudo ldapadd -Q -Y EXTERNAL -H ldapi:/// -f memberof.ldif 
+adding new entry "cn=module,cn=config"
+
+adding new entry "olcOverlay={0}memberof,olcDatabase={1}mdb,cn=config"
+
+root@croqueta:/home/debian# sudo ldapadd -Q -Y EXTERNAL -H ldapi:/// -f refint.ldif 
+adding new entry "cn=module,cn=config"
+
+adding new entry "olcOverlay={1}refint,olcDatabase={1}mdb,cn=config"
+</pre>
+
+Para que funcione la configuración debemos borrar los grupos y agregarlos de vuelta
+<pre>
+ldapdelete -x -D "cn=admin,dc=alejandro,dc=gonzalonazareno,dc=org" 'cn=comercial,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org' -W
+ldapdelete -x -D "cn=admin,dc=alejandro,dc=gonzalonazareno,dc=org" 'cn=almacen,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org' -W
+ldapdelete -x -D "cn=admin,dc=alejandro,dc=gonzalonazareno,dc=org" 'cn=admin,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org' -W
+</pre>
+
+Vamos a comprobarlo
+<pre>
+root@croqueta:/home/debian# ldapsearch -LL -Y EXTERNAL -H ldapi:/// "(uid=Villa)" -b dc=alejandro,dc=gonzalonazareno,dc=org memberOf
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+version: 1
+
+dn: uid=Villa,ou=People,dc=alejandro,dc=gonzalonazareno,dc=org
+memberOf: cn=almacen,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org
+</pre>
+
+* Crea las *ACLs* necesarias para que los usuarios del grupo *almacen* puedan ver todos los atributos de todos los usuarios pero solo puedan modificar las suyas.
+
+Editamos el fichero /usr/share/slapd/slapd.conf y ponemos
+<pre>
+access to *
+    by group.exact="cn=almacen,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org" read
+    by group.exact="cn=almacen,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org" search
+    by group.exact="cn=almacen,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org" self write
+</pre>
+
+
+* Crea las *ACLs* necesarias para que los usuarios del grupo *admin* puedan _ver y modificar cualquier atributo de cualquier objeto_
+Editamos el fichero /usr/share/slapd/slapd.conf y  ponemos
+<pre>
+access to *
+    by group.exact="cn=admin,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org" read
+    by group.exact="cn=admin,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org" search
+    by group.exact="cn=admin,ou=Group,dc=alejandro,dc=gonzalonazareno,dc=org" write
+</pre>

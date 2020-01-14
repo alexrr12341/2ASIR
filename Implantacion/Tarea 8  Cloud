@@ -1,0 +1,103 @@
+h2. Tarea 8) Instalación de aplicación python (APLICACIONES WEBS)
+
+-Instala el CMS en el entorno de desarrollo. Debes utilizar un entorno virtual. 
+
+Vamos primero a hacer nuestro entorno virtual
+<pre>
+python3 -m venv mezzanine
+alexrr@pc-alex:~/pythonvirtual$ source mezzanine/bin/activate
+(mezzanine) alexrr@pc-alex:~/pythonvirtual$ 
+</pre>
+
+Ahora vamos a instalar mezzanine con pip
+<pre>
+pip install mezzanine
+</pre>
+
+Ahora vamos a movernos a una carpeta, por ejemplo mezzanine y nos vamos a hacer un requirements.txt
+<pre>
+pip freeze > requirements.txt
+</pre>
+Y borramos la línea del requirements.txt de pkg-resources:
+<pre>
+pkg-resources==0.0.0
+</pre>
+
+Y ahora vamos a hacer el proyecto de mezzanine
+<pre>
+mezzanine-project pythoncms
+</pre>
+
+Y vamos a crear la base de datos
+<pre>
+(mezzanine) alexrr@pc-alex:~/mezzanine/pythoncms$ python3 manage.py migrate
+Operations to perform:
+  Apply all migrations: admin, auth, blog, conf, contenttypes, core, django_comments, forms, galleries, generic, pages, redirects, sessions, sites, twitter
+...
+</pre>
+
+Y creamos el super user
+<pre>
+(mezzanine) alexrr@pc-alex:~/mezzanine/pythoncms$ python3 manage.py createsuperuser
+
+Creating default account ...
+
+Username (leave blank to use 'alexrr'): 
+Email address: alexrodriguezrojas98@gmail.com
+Password: 
+Password (again): 
+Superuser created successfully.
+</pre>
+
+
+Y ahora abrimos el servidor
+<pre>
+(mezzanine) alexrr@pc-alex:~/mezzanine/pythoncms$ python3 manage.py runserver
+</pre>
+
+Y miramos la página:
+
+!mezzanine.png!
+
+
+-Personaliza la página (cambia el nombre al blog y pon tu nombre) y añade contenido (algún artículo con alguna imagen).
+
+!mezzanine2.png!
+
+Vamos ahora a cambiar el tema de la página.
+<pre>
+git clone https://github.com/thecodinghouse/mezzanine-themes
+</pre>
+
+Y en el settings.py ponemos
+<pre>
+INSTALLED_APPS = (
+	"flat",
+	...
+)
+</pre>
+
+Y si queremos que el servidor en producción la tenga de vuelta hacemos
+<pre>
+pip freeze > requirements.txt
+</pre>
+
+!mezzanine3.png!
+
+-Guarda los ficheros generados durante la instalación en un repositorio github. Guarda también en ese repositorio la copia de seguridad de la bese de datos.
+
+Vamos a guardar los archivos en un fichero .json
+<pre>
+(mezzanine) alexrr@pc-alex:~/mezzanine/pythoncms$ python3 manage.py dumpdata > db.json
+</pre>
+
+Ahora lo vamos a subir a github
+<pre>
+git init
+git add *
+git commit -m "Añadir pythoncms"
+git remote add origin git@github.com:alexrr12341/pythoncms.git
+git push -u origin master
+</pre>
+
+

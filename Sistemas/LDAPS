@@ -1,0 +1,87 @@
+Primero nos tenemos que pasar el certificado junto a nuestra clave, junto a la unidad certificadora del gonzalo nazareno.
+<pre>
+debian@croqueta:/etc/ssl/openldap/certs$ ls
+IESGonzaloNazareno.crt  salmorejo.alejandro.gonzalonazareno.org.crt
+
+debian@croqueta:/etc/ssl/openldap/private$ ls
+salmorejo.alejandro.gonzalonazareno.org.key
+</pre>
+
+
+Ahora modificamos el directorio /usr/lib/ssl/openssl.cnf y descomentamos la linea de dir y ponemos la siguiente
+<pre>
+[ CA_default ]
+
+#dir            = ./demoCA              # Where everything is kept
+dir             = /etc/ssl/openldap
+</pre>
+
+Ahora queremos añadir los permisos de openssl a ldap por lo que usaremos el programa para hacer acls
+<pre>
+apt install acl
+</pre>
+
+Y añadimos los permisos
+<pre>
+sudo setfacl -m u:openldap:r-x /etc/ssl/openldap/certs/
+sudo setfacl -m u:openldap:r-x /etc/ssl/openldap/certs/salmorejo.alejandro.gonzalonazareno.org.crt
+sudo setfacl -m u:openldap:r-x /etc/ssl/openldap/certs/IESGonzaloNazareno.crt 
+sudo setfacl -m u:openldap:r-x /etc/ssl/openldap/private/
+sudo setfacl -m u:openldap:r-x /etc/ssl/openldap/private/salmorejo.alejandro.gonzalonazareno.org.key 
+</pre>
+
+Y ahora modificamos la entrada de LDAP con ldapmodify tal que así
+<pre>
+ldap-tls.ldif:
+dn: cn=config
+changetype: modify
+add: olcTLSCACertificateFile
+olcTLSCACertificateFile: /etc/ssl/openldap/certs/IESGonzaloNazareno.crt
+-
+replace: olcTLSCertificateFile
+olcTLSCertificateFile: /etc/ssl/openldap/certs/salmorejo.alejandro.gonzalonazareno.org.crt
+-
+replace: olcTLSCertificateKeyFile
+olcTLSCertificateKeyFile: /etc/ssl/openldap/private/salmorejo.alejandro.gonzalonazareno.org.key
+</pre>
+<pre>
+ldapmodify -Y EXTERNAL -H ldapi:/// -f ldap-tls.ldif
+</pre>
+
+Ahora vamos a /etc/ldap/ldap.conf y ponemos el certificado de gonzalo nazareno.
+<pre>
+TLS_CACERT	/etc/ssl/openldap/certs/IESGonzaloNazareno.crt
+</pre>
+
+Para que funcione el cliente ldap con ldaps:/// debemos editar el fichero /etc/default/slapd y poner la siguiente línea:
+<pre>
+SLAPD_SERVICES="ldaps:///"
+</pre>
+
+Vemos su funcionamiento:
+<pre>
+root@croqueta:/home/debian# ldapsearch -x -H ldap://croqueta.alejandro.gonzalonazareno.org:389 -b "cn=admin,dc=alejandro,dc=gonzalonazareno,dc=org"
+ldap_sasl_bind(SIMPLE): Can't contact LDAP server (-1)
+root@croqueta:/home/debian# ldapsearch -x -H ldaps://croqueta.alejandro.gonzalonazareno.org:636 -b "cn=admin,dc=alejandro,dc=gonzalonazareno,dc=org"
+# extended LDIF
+#
+# LDAPv3
+# base <cn=admin,dc=alejandro,dc=gonzalonazareno,dc=org> with scope subtree
+# filter: (objectclass=*)
+# requesting: ALL
+#
+
+# admin, alejandro.gonzalonazareno.org
+dn: cn=admin,dc=alejandro,dc=gonzalonazareno,dc=org
+objectClass: simpleSecurityObject
+objectClass: organizationalRole
+cn: admin
+description: LDAP administrator
+
+# search result
+search: 2
+result: 0 Success
+
+# numResponses: 2
+# numEntries: 1
+</pre>

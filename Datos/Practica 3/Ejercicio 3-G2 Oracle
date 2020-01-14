@@ -1,0 +1,45 @@
+       
+    3. (ORACLE, Postgres) Realiza un procedimiento que reciba dos nombres de usuario y genere un script que asigne al primero los privilegios de inserción y modificación sobre todas las tablas del segundo, así como el de ejecución de cualquier procedimiento que tenga el segundo usuario.
+
+Create or replace procedure MostrarScriptPrivilegios(p_objeto varchar2,p_user varchar2,p_diferencia number)
+is
+begin
+
+	if p_diferencia = 1 then
+		dbms_output.put_line('GRANT INSERT ON '||p_objeto||' TO '||p_user||';');
+		dbms_output.put_line('GRANT ALTER ON '||p_objeto||' TO '||p_user||';');
+	elsif p_diferencia  = 2 then
+		dbms_output.put_line('GRANT EXECUTE ON '||p_objeto||' TO '||p_user||';');
+	end if;
+end;
+/
+
+
+Create or replace procedure AsignarPrivilegios(p_usernopriv varchar2,p_usersipriv varchar2)
+is
+	cursor c_usertablas is
+	Select table_name
+	from dba_tables
+	where owner=p_usersipriv;
+
+	cursor c_userproce is
+	Select object_name
+	from dba_procedures
+	where owner=p_usersipriv
+	and object_type='PROCEDURE';
+begin
+	dbms_output.put_line(chr(13));
+	dbms_output.put_line('Privilegios sobre las tablas');
+	dbms_output.put_line('----------------------------');
+	for v_usertablas in c_usertablas loop
+		MostrarScriptPrivilegios(v_usertablas.table_name,p_usernopriv,1);
+	end loop;
+	dbms_output.put_line(chr(13));
+	dbms_output.put_line('Privilegios sobre procedimientos');
+	dbms_output.put_line('--------------------------------');
+	for v_userproce in c_userproce loop
+		MostrarScriptPrivilegios(v_userproce.object_name,p_usernopriv,2);
+	end loop;
+
+end;
+/

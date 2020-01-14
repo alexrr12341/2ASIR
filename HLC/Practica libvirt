@@ -1,0 +1,8 @@
+FASE 1:
+- Crear una MV en libvirt/KVM de tu equipo conectado a una red interna que tenga salida por NAT usando la imagen de buster del NAS y con aprovisionamiento ligero (MV1).
+- Configurar la RAM disponible a 500 MiB
+- Crear un fichero adicional de 200 MiB y conectarlo a MV1 a través de libvirt
+- Instalar PostgreSQL y ubicar el directorio /var/lib/postgresql en el volumen asociado al fichero adicional (muy importante comprobar permisos y propietarios)
+- Poblar la base de datos
+- Crear una regla de iptables que redirija las peticiones al puerto 5432/tcp que se realicen desde fuera a MV1 para que la base de datos sea accesible desde el exterior.
+- Crear un registro en el DNS para el servicio
