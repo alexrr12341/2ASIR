@@ -63,7 +63,7 @@ h2. PHP-FPM (socket unix) + apache2
 
 Instalamos php-fpm
 <pre>
-apt install php-fpm
+apt install php7.3-fpm
 systemctl start php7.3-fpm php7.3
 </pre>
 
@@ -94,7 +94,18 @@ Y en /etc/apache2/conf-available/php7.3-fpm.conf ponemos
                 SetHandler "proxy:unix:/run/php/php7.3-fpm.sock|fcgi://127.0.0.1/"
         </FilesMatch>
 </pre>
-
+<pre>
+a2enconf php7.3-fpm.conf
+systemctl reload apache2
+</pre>
+Y en el virtual host 000-default.conf ponemos
+<pre>
+<Directory /wordpress>
+		Options Indexes FollowSymLinks
+		AllowOverride All
+		Require all granted
+</Directory>
+</pre>
 !phpinfofpmsocket.png!
 
 Y vemos el wordpress
@@ -137,7 +148,18 @@ Y en /etc/apache2/conf-available/php7.3-fpm.conf ponemos
                 SetHandler "proxy:fcgi://127.0.0.1:9000"
         </FilesMatch>
 </pre>
-
+<pre>
+a2enconf php7.3-fpm.conf
+systemctl reload apache2
+</pre>
+Y en el virtual host 000-default.conf ponemos
+<pre>
+<Directory /wordpress>
+		Options Indexes FollowSymLinks
+		AllowOverride All
+		Require all granted
+</Directory>
+</pre>
 !phpinfofpmtcp.png!
 
 Vamos a ver el wordpress
@@ -182,17 +204,162 @@ listen = /run/php/php7.3-fpm.sock
 
 Y en /etc/nginx/sites-availabe/wordpress ponemos
 <pre>
- location ~ \.php$ {
-                include snippets/fastcgi-php.conf;
-
-        #       # With php-fpm (or other unix sockets):
-                fastcgi_pass unix:/run/php/php7.3-fpm.sock;
-        #       # With php-cgi (or other tcp sockets):
-        #       fastcgi_pass 127.0.0.1:9000;
+upstream php {
+        server unix:/run/php/php7.3-fpm.sock;
+}
+server {
+        server_name wordpressalejandro.org;
+        root /var/www/html/wordpress;
+        index index.php;
+        location = /favicon.ico {
+                log_not_found off;
+                access_log off;
         }
+        location = /robots.txt {
+                allow all;
+                log_not_found off;
+                access_log off;
+        }
+        location / {
+                try_files $uri $uri/ /index.php?$args;
+        }
+        location ~ \.php$ {
+                include fastcgi.conf;
+                fastcgi_intercept_errors on;
+                fastcgi_pass php;
+        }
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico)$ {
+                expires max;
+                log_not_found off;
+        }
+}
 </pre>
 
 !phpinfonginxfpmsocket.png!
 
 Y miramos el wordpress
-!wordpressnginxfpmsocket.png!
+!wordpressnginxfpmsocket.png! 
+!wordpressnginxfpmfoto1.png!
+
+Si queremos cambiar la configuración vamos a /etc/php/7.3/fpm/php.ini y cambiamos
+<pre>
+upload_max_filesize = 25M
+post_max_size = 25M
+</pre>
+!wordpressnginxfpmfoto2.png!
+
+Ahora vamos a hacer el test de rendimiento
+<pre>
+ab -t 10 -c 200 http://wordpressalejandro.org/
+</pre>
+
+<pre>
+1-4978.93
+2-4516.73
+3-4976.40
+4-4897.45
+5-4860.29
+</pre>
+
+La media sería de 4845,96 peticiones.
+
+h2. PHP-FPM (socket TCP) + nginx
+
+Configuramos php-fpm en /etc/php/7.3/fpm/pool.d/www.conf
+<pre>
+listen = 127.0.0.1:9000
+</pre>
+
+Y en /etc/nginx/sites-availabe/wordpress ponemos
+<pre>
+upstream php {
+        server 127.0.0.1:9000;
+}
+server {
+        server_name wordpressalejandro.org;
+        root /var/www/html/wordpress;
+        index index.php;
+        location = /favicon.ico {
+                log_not_found off;
+                access_log off;
+        }
+        location = /robots.txt {
+                allow all;
+                log_not_found off;
+                access_log off;
+        }
+        location / {
+                try_files $uri $uri/ /index.php?$args;
+        }
+        location ~ \.php$ {
+                include fastcgi.conf;
+                fastcgi_intercept_errors on;
+                fastcgi_pass php;
+        }
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico)$ {
+                expires max;
+                log_not_found off;
+        }
+}
+</pre>
+
+!phpinfonginxsockettcp.png!
+
+Miramos el wordpress:
+
+!wordpressnginxtcp.png!
+
+!wordpressnginxtcpfoto1.png!
+
+Si queremos cambiar la configuración vamos a /etc/php/7.3/fpm/php.ini y cambiamos
+<pre>
+upload_max_filesize = 30M
+post_max_size = 30M
+</pre>
+!wordpressnginxtcpfoto2.png!
+
+Ahora vamos a hacer el test de rendimiento
+<pre>
+ab -t 10 -c 200 http://wordpressalejandro.org/
+</pre>
+
+<pre>
+1-78.41
+2-75.96
+3-77.99
+4-77.86
+5-77.68
+</pre>
+
+La media sería de 77,58 peticiones por segundo
+
+Vemos que la configuración ganadora es nginx+php-fpm(socket unix).
+
+Tarea 2 (2 puntos): Añade a la configuración ganadora del punto anterior memcached. Documenta la instalación y configuración memcached. Recuerda que para que Wordpress utilice memcached le tenemos que instalar un plugin. Muestra las estadísticas de memcached después de acceder varias veces a wordpress para comprobar que esa funcionando. Realiza varias pruebas de rendimiento y comprueba si hemos aumentado el rendimiento.
+
+Vamos a instalar primero memcached para poner la configuración:
+<pre>
+apt install memcached
+</pre>
+
+Y instalamos la extensión para php
+<pre>
+apt install php-memcached
+</pre>
+
+Miramos a ver si está realmente instalado en nuestro php
+!phpinfomemcached.png!
+
+Ahora vamos a nuestro wordpress y instalamos Flexicache para que use memcached.
+!flexicacheinstalador.png!
+
+Lo instalamos y lo activamos.
+
+Ahora vamos a probar el rendimiento.
+
+Y vamos a comprobar el test de rendimiento
+<pre>
+ab -t 10 -c 200 http://wordpressalejandro.org/
+</pre>
+
+

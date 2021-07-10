@@ -1,0 +1,782 @@
+INDIVIDUAL
+
+1. Realiza una exportación del esquema de SCOTT usando la consola Enterprise Manager, con las siguientes condiciones:
+
+    • Exporta tanto la estructura de las tablas como los datos de las mismas.
+    • Excluye de la tabla EMP los empleados que no tienen comisión.
+    • Programa la operación para dentro de 10 minutos.
+    • Genera un archivo de log en el directorio que consideres más oportuno.
+
+Realiza ahora la operación con Oracle Data Pump.
+
+2. Importa el fichero obtenido anteriormente usando Enterprise Manager pero en un usuario distinto de otra base de datos.
+
+3. Realiza una exportación de la estructura de todas las tablas de la base de datos usando el comando expdp de Oracle Data Pump utilizando un DBLink desde otra base de datos. Prueba todas las posibles opciones que ofrece dicho comando y documentándolas adecuadamente.
+
+4. Intenta realizar operaciones similares de importación y exportación con una herramienta gráfica de administración de MySQL, documentando el proceso.
+
+5. Exporta todos los documentos de las colecciones de MongoDB que tengan más de cuatro documentos e impórtalos en otra base de datos .
+
+
+
+
+GRUMPAL
+1. Importad el fichero resultante de la exportación completa de las tablas y los datos de una instancia de ORACLE en otra instancia diferente empleando el comando impdp y explicad qué problemas surgen. Realizad un remapeo de esquemas si es necesario.
+
+
+Vamos ahora a importar los datos en la instancia de Alejandro Rodríguez.
+
+```sql
+SQL> Create directory Fernandonoesta as '/home/oracle/fernandonoesta';
+
+grant read,write on directory Fernandonoesta to system;
+
+SQL> grant exp_full_database to system;
+
+Concesión terminada correctamente.
+
+SQL> grant imp_full_database to system;
+
+Concesión terminada correctamente.
+
+```
+
+Ahora vamos a meter en el directorio la copia
+
+```
+oracle@debian:~$ mv CopiaCompleta.dmp fernandonoesta/
+
+oracle@debian:~/fernandonoesta$ impdp system/dios dumpfile=CopiaCompleta.dmp directory=Fernandonoesta
+
+
+oracle@debian:~/fernandonoesta$ impdp system/dios dumpfile=CopiaCompleta.dmp directory=Fernandonoesta
+
+Import: Release 12.2.0.1.0 - Production on Sáb Feb 1 00:51:19 2020
+
+Copyright (c) 1982, 2017, Oracle and/or its affiliates.  All rights reserved.
+
+Conectado a: Oracle Database 12c Enterprise Edition Release 12.2.0.1.0 - 64bit Production
+
+Advertencia: Las operaciones de Oracle Data Pump no se necesitan normalmente cuando se conecta a la raíz o al elemento inicial de una base de datos del contenedor.
+
+La tabla maestra "SYSTEM"."SYS_IMPORT_FULL_01" se ha cargado/descargado correctamente
+Iniciando "SYSTEM"."SYS_IMPORT_FULL_01":  system/******** dumpfile=CopiaCompleta.dmp directory=Fernandonoesta 
+Procesando el tipo de objeto DATABASE_EXPORT/PRE_SYSTEM_IMPCALLOUT/MARKER
+Procesando el tipo de objeto DATABASE_EXPORT/PRE_INSTANCE_IMPCALLOUT/MARKER
+Procesando el tipo de objeto DATABASE_EXPORT/TABLESPACE
+ORA-31684: El tipo de objeto TABLESPACE:"CUSTOM_TEMP" ya existe
+
+ORA-31684: El tipo de objeto TABLESPACE:"UNDOTBS1" ya existe
+
+ORA-39083: Fallo de creación del tipo de objeto TABLESPACE:"CUSTOM_TEMP3" con el error:
+ORA-01119: error al crear el archivo de base de datos '/opt/oracle/oradata/orcl/customtemp3.dbf'
+ORA-27038: el archivo creado ya existe
+Additional information: 1
+
+El sql que falla es:
+CREATE TEMPORARY TABLESPACE "CUSTOM_TEMP3" TEMPFILE '/opt/oracle/oradata/orcl/customtemp3.dbf' SIZE 9437184 AUTOEXTEND ON NEXT 8192 MAXSIZE 32767M EXTENT MANAGEMENT LOCAL UNIFORM SIZE 1048576
+
+ORA-31684: El tipo de objeto TABLESPACE:"TEMP" ya existe
+
+ORA-31684: El tipo de objeto TABLESPACE:"USERS" ya existe
+
+ORA-31684: El tipo de objeto TABLESPACE:"TS2" ya existe
+
+Procesando el tipo de objeto DATABASE_EXPORT/PROFILE
+ORA-39083: Fallo de creación del tipo de objeto PROFILE:"PSWSEGURA" con el error:
+ORA-65140: nombre de perfil común no válido
+
+El sql que falla es:
+ CREATE PROFILE "PSWSEGURA" LIMIT COMPOSITE_LIMIT DEFAULT SESSIONS_PER_USER DEFAULT CPU_PER_SESSION DEFAULT CPU_PER_CALL DEFAULT LOGICAL_READS_PER_SESSION DEFAULT LOGICAL_READS_PER_CALL DEFAULT IDLE_TIME DEFAULT CONNECT_TIME DEFAULT PRIVATE_SGA DEFAULT FAILED_LOGIN_ATTEMPTS DEFAULT PASSWORD_LIFE_TIME DEFAULT PASSWORD_REUSE_TIME DEFAULT PASSWORD_REUSE_MAX DEFAULT PASSWORD_VERIFY_FUNCTION "VERIFICACIONPSW" PASSWORD_LOCK_TIME DEFAULT PASSWORD_GRACE_TIME DEFAULT INACTIVE_ACCOUNT_TIME DEFAULT 
+
+ORA-39083: Fallo de creación del tipo de objeto PROFILE:"PASSSEGURA1" con el error:
+ORA-65140: nombre de perfil común no válido
+
+El sql que falla es:
+ CREATE PROFILE "PASSSEGURA1" LIMIT COMPOSITE_LIMIT DEFAULT SESSIONS_PER_USER DEFAULT CPU_PER_SESSION DEFAULT CPU_PER_CALL DEFAULT LOGICAL_READS_PER_SESSION DEFAULT LOGICAL_READS_PER_CALL DEFAULT IDLE_TIME DEFAULT CONNECT_TIME DEFAULT PRIVATE_SGA DEFAULT FAILED_LOGIN_ATTEMPTS DEFAULT PASSWORD_LIFE_TIME DEFAULT PASSWORD_REUSE_TIME DEFAULT PASSWORD_REUSE_MAX DEFAULT PASSWORD_VERIFY_FUNCTION "COMPROBARPASSNEW" PASSWORD_LOCK_TIME DEFAULT PASSWORD_GRACE_TIME DEFAULT INACTIVE_ACCOUNT_TIME DEFAULT 
+
+ORA-39083: Fallo de creación del tipo de objeto PROFILE:"PASSSEGURA" con el error:
+ORA-65140: nombre de perfil común no válido
+
+El sql que falla es:
+ CREATE PROFILE "PASSSEGURA" LIMIT COMPOSITE_LIMIT DEFAULT SESSIONS_PER_USER DEFAULT CPU_PER_SESSION DEFAULT CPU_PER_CALL DEFAULT LOGICAL_READS_PER_SESSION DEFAULT LOGICAL_READS_PER_CALL DEFAULT IDLE_TIME DEFAULT CONNECT_TIME DEFAULT PRIVATE_SGA DEFAULT FAILED_LOGIN_ATTEMPTS DEFAULT PASSWORD_LIFE_TIME DEFAULT PASSWORD_REUSE_TIME DEFAULT PASSWORD_REUSE_MAX DEFAULT PASSWORD_VERIFY_FUNCTION "COMPROBARPASSNEW" PASSWORD_LOCK_TIME DEFAULT PASSWORD_GRACE_TIME DEFAULT INACTIVE_ACCOUNT_TIME DEFAULT 
+
+ORA-39083: Fallo de creación del tipo de objeto PROFILE:"PASSSEGURAS" con el error:
+ORA-65140: nombre de perfil común no válido
+
+El sql que falla es:
+ CREATE PROFILE "PASSSEGURAS" LIMIT COMPOSITE_LIMIT DEFAULT SESSIONS_PER_USER DEFAULT CPU_PER_SESSION DEFAULT CPU_PER_CALL DEFAULT LOGICAL_READS_PER_SESSION DEFAULT LOGICAL_READS_PER_CALL DEFAULT IDLE_TIME DEFAULT CONNECT_TIME DEFAULT PRIVATE_SGA DEFAULT FAILED_LOGIN_ATTEMPTS DEFAULT PASSWORD_LIFE_TIME DEFAULT PASSWORD_REUSE_TIME DEFAULT PASSWORD_REUSE_MAX DEFAULT PASSWORD_VERIFY_FUNCTION "COMPROBARPASSNEW" PASSWORD_LOCK_TIME DEFAULT PASSWORD_GRACE_TIME DEFAULT INACTIVE_ACCOUNT_TIME DEFAULT 
+
+Procesando el tipo de objeto DATABASE_EXPORT/SYS_USER/USER
+ORA-31685: El tipo de objeto USER:"SYS" ha fallado debido a privilegios insuficientes. El sql que ha fallado es:
+ ALTER USER "SYS" IDENTIFIED BY VALUES 'S:92EC9E681CD240D7D042960872E3603D2BF2AB6EBDA68B8B3A169C2BCD9E;T:886C30733F86FEA41FF8EA2D5BED5982774F138CD985A3FF31734A0EFC1F1CAE5CC7F56F415AD7836A9D2097083F09F5143F761B817AECAEC4579CD7863514356F9D8572639FCED4324102F6B5C8B7D3' TEMPORARY TABLESPACE "CUSTOM_TEMP3"
+
+Procesando el tipo de objeto DATABASE_EXPORT/RADM_FPTM
+Procesando el tipo de objeto DATABASE_EXPORT/GRANT/SYSTEM_GRANT/PROC_SYSTEM_GRANT
+Procesando el tipo de objeto DATABASE_EXPORT/SCHEMA/GRANT/SYSTEM_GRANT
+ORA-39083: Fallo de creación del tipo de objeto SYSTEM_GRANT con el error:
+ORA-01917: el usuario o rol 'MORALG' no existe
+
+El sql que falla es:
+GRANT CREATE TABLESPACE TO "MORALG"
+
+ORA-39083: Fallo de creación del tipo de objeto SYSTEM_GRANT con el error:
+ORA-01917: el usuario o rol 'MORALG' no existe
+
+El sql que falla es:
+GRANT CREATE TABLE TO "MORALG"
+
+ORA-39083: Fallo de creación del tipo de objeto SYSTEM_GRANT con el error:
+ORA-01917: el usuario o rol 'C##JOSEMARI' no existe
+
+El sql que falla es:
+GRANT UNLIMITED TABLESPACE TO "C##JOSEMARI"
+
+Procesando el tipo de objeto DATABASE_EXPORT/SCHEMA/ROLE_GRANT
+ORA-39083: Fallo de creación del tipo de objeto ROLE_GRANT con el error:
+ORA-01917: el usuario o rol 'C##JOSEMARI' no existe
+
+El sql que falla es:
+ GRANT "CONNECT" TO "C##JOSEMARI"
+
+ORA-39083: Fallo de creación del tipo de objeto ROLE_GRANT con el error:
+ORA-01917: el usuario o rol 'C##JOSEMARI' no existe
+
+El sql que falla es:
+ GRANT "RESOURCE" TO "C##JOSEMARI"
+
+Procesando el tipo de objeto DATABASE_EXPORT/SCHEMA/DEFAULT_ROLE
+ORA-39083: Fallo de creación del tipo de objeto DEFAULT_ROLE:"USUARIOPRUEBA" con el error:
+ORA-01918: el usuario 'USUARIOPRUEBA' no existe
+
+El sql que falla es:
+ ALTER USER "USUARIOPRUEBA" DEFAULT ROLE ALL
+
+ORA-39083: Fallo de creación del tipo de objeto DEFAULT_ROLE:"USUARIOSINPRIV" con el error:
+ORA-01918: el usuario 'USUARIOSINPRIV' no existe
+
+El sql que falla es:
+ ALTER USER "USUARIOSINPRIV" DEFAULT ROLE ALL
+
+ORA-39083: Fallo de creación del tipo de objeto DEFAULT_ROLE:"PRUEBAPASS" con el error:
+ORA-01918: el usuario 'PRUEBAPASS' no existe
+
+El sql que falla es:
+ ALTER USER "PRUEBAPASS" DEFAULT ROLE ALL
+
+ORA-39083: Fallo de creación del tipo de objeto DEFAULT_ROLE:"PACO" con el error:
+ORA-01918: el usuario 'PACO' no existe
+
+El sql que falla es:
+ ALTER USER "PACO" DEFAULT ROLE ALL
+
+ORA-39083: Fallo de creación del tipo de objeto DEFAULT_ROLE:"PRUEBAPALOMA" con el error:
+ORA-01918: el usuario 'PRUEBAPALOMA' no existe
+
+El sql que falla es:
+ ALTER USER "PRUEBAPALOMA" DEFAULT ROLE ALL
+
+ORA-39083: Fallo de creación del tipo de objeto DEFAULT_ROLE:"LUIS" con el error:
+ORA-01918: el usuario 'LUIS' no existe
+
+El sql que falla es:
+ ALTER USER "LUIS" DEFAULT ROLE ALL
+
+ORA-39083: Fallo de creación del tipo de objeto DEFAULT_ROLE:"USUARIO1" con el error:
+ORA-01918: el usuario 'USUARIO1' no existe
+
+El sql que falla es:
+ ALTER USER "USUARIO1" DEFAULT ROLE ALL
+
+ORA-39083: Fallo de creación del tipo de objeto DEFAULT_ROLE:"C##JOSEMARI" con el error:
+ORA-01918: el usuario 'C##JOSEMARI' no existe
+
+El sql que falla es:
+ ALTER USER "C##JOSEMARI" DEFAULT ROLE ALL
+
+ORA-39083: Fallo de creación del tipo de objeto DEFAULT_ROLE:"MORALG" con el error:
+ORA-01918: el usuario 'MORALG' no existe
+
+El sql que falla es:
+ ALTER USER "MORALG" DEFAULT ROLE ALL
+
+ORA-39083: Fallo de creación del tipo de objeto DEFAULT_ROLE:"NUEVOUSUARIO" con el error:
+ORA-01918: el usuario 'NUEVOUSUARIO' no existe
+
+El sql que falla es:
+ ALTER USER "NUEVOUSUARIO" DEFAULT ROLE ALL
+
+Procesando el tipo de objeto DATABASE_EXPORT/SCHEMA/ON_USER_GRANT
+ORA-39083: Fallo de creación del tipo de objeto ON_USER_GRANT con el error:
+ORA-31625: Se necesita el esquema USUARIOPRUEBA para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+ GRANT INHERIT PRIVILEGES ON USER "USUARIOPRUEBA" TO "PUBLIC"
+
+ORA-39083: Fallo de creación del tipo de objeto ON_USER_GRANT con el error:
+ORA-31625: Se necesita el esquema USUARIOSINPRIV para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+ GRANT INHERIT PRIVILEGES ON USER "USUARIOSINPRIV" TO "PUBLIC"
+
+ORA-39083: Fallo de creación del tipo de objeto ON_USER_GRANT con el error:
+ORA-31625: Se necesita el esquema PRUEBAPASS para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+ GRANT INHERIT PRIVILEGES ON USER "PRUEBAPASS" TO "PUBLIC"
+
+ORA-39083: Fallo de creación del tipo de objeto ON_USER_GRANT con el error:
+ORA-31625: Se necesita el esquema PACO para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+ GRANT INHERIT PRIVILEGES ON USER "PACO" TO "PUBLIC"
+
+ORA-39083: Fallo de creación del tipo de objeto ON_USER_GRANT con el error:
+ORA-31625: Se necesita el esquema LUIS para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+ GRANT INHERIT PRIVILEGES ON USER "LUIS" TO "PUBLIC"
+
+ORA-39083: Fallo de creación del tipo de objeto ON_USER_GRANT con el error:
+ORA-31625: Se necesita el esquema PRUEBAPALOMA para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+ GRANT INHERIT PRIVILEGES ON USER "PRUEBAPALOMA" TO "PUBLIC"
+
+ORA-39083: Fallo de creación del tipo de objeto ON_USER_GRANT con el error:
+ORA-31625: Se necesita el esquema USUARIO1 para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+ GRANT INHERIT PRIVILEGES ON USER "USUARIO1" TO "PUBLIC"
+
+ORA-39083: Fallo de creación del tipo de objeto ON_USER_GRANT con el error:
+ORA-31625: Se necesita el esquema MORALG para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+ GRANT INHERIT PRIVILEGES ON USER "MORALG" TO "PUBLIC"
+
+ORA-39083: Fallo de creación del tipo de objeto ON_USER_GRANT con el error:
+ORA-31625: Se necesita el esquema C##JOSEMARI para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+ GRANT INHERIT PRIVILEGES ON USER "C##JOSEMARI" TO "PUBLIC"
+
+ORA-39083: Fallo de creación del tipo de objeto ON_USER_GRANT con el error:
+ORA-31625: Se necesita el esquema NUEVOUSUARIO para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+ GRANT INHERIT PRIVILEGES ON USER "NUEVOUSUARIO" TO "PUBLIC"
+
+Procesando el tipo de objeto DATABASE_EXPORT/RESOURCE_COST
+Procesando el tipo de objeto DATABASE_EXPORT/SCHEMA/DB_LINK
+ORA-39083: Fallo de creación del tipo de objeto DB_LINK con el error:
+ORA-31625: Se necesita el esquema MORALG para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+CREATE DATABASE LINK "CONEXIONPALOMA"  CONNECT TO "PALOMA" IDENTIFIED BY VALUES ':1'  USING 'orcl'
+
+Procesando el tipo de objeto DATABASE_EXPORT/TRUSTED_DB_LINK
+Procesando el tipo de objeto DATABASE_EXPORT/DIRECTORY/DIRECTORY
+ORA-31684: El tipo de objeto DIRECTORY:"DATA_PUMP_DIR" ya existe
+
+Procesando el tipo de objeto DATABASE_EXPORT/DIRECTORY/GRANT/OWNER_GRANT/OBJECT_GRANT
+Procesando el tipo de objeto DATABASE_EXPORT/SYSTEM_PROCOBJACT/PRE_SYSTEM_ACTIONS/PROCACT_SYSTEM
+>>> Cannot set an SCN larger than the current SCN. If a Streams Capture configuration was imported then the Apply that processes the captured messages needs to be dropped and recreated. See My Oracle Support article number 1380295.1.
+Procesando el tipo de objeto DATABASE_EXPORT/SYSTEM_PROCOBJACT/PROCOBJ
+ORA-39083: Fallo de creación del tipo de objeto PROCOBJ:"SYS"."DSS_CRITICAL_GROUP" con el error:
+ORA-65046: operación no permitida desde fuera de una base de datos de conexión
+
+El sql que falla es:
+BEGIN 
+declare error_num1 exception;PRAGMA EXCEPTION_INIT(error_num1, -29357);begin dbms_resource_manager.create_consumer_group(consumer_group => 'DSS_CRITICAL_GROUP', comment => 'Consumer group for critical DSS queries');exception when error_num1 then NULL;when others then raise; end;COMMIT; END; 
+
+ORA-39083: Fallo de creación del tipo de objeto PROCOBJ:"SYS"."DSS_GROUP" con el error:
+ORA-65046: operación no permitida desde fuera de una base de datos de conexión
+
+El sql que falla es:
+BEGIN 
+declare error_num1 exception;PRAGMA EXCEPTION_INIT(error_num1, -29357);begin dbms_resource_manager.create_consumer_group(consumer_group => 'DSS_GROUP', comment => 'Consumer group for DSS queries');exception when error_num1 then NULL;when others then raise; end;COMMIT; END; 
+
+ORA-39083: Fallo de creación del tipo de objeto PROCOBJ:"SYS"."ETL_GROUP" con el error:
+ORA-65046: operación no permitida desde fuera de una base de datos de conexión
+
+El sql que falla es:
+BEGIN 
+declare error_num1 exception;PRAGMA EXCEPTION_INIT(error_num1, -29357);begin dbms_resource_manager.create_consumer_group(consumer_group => 'ETL_GROUP', comment => 'Consumer group for ETL');exception when error_num1 then NULL;when others then raise; end;COMMIT; END; 
+
+ORA-39083: Fallo de creación del tipo de objeto PROCOBJ:"SYS"."LOW_GROUP" con el error:
+ORA-65046: operación no permitida desde fuera de una base de datos de conexión
+
+El sql que falla es:
+BEGIN 
+declare error_num1 exception;PRAGMA EXCEPTION_INIT(error_num1, -29357);begin dbms_resource_manager.create_consumer_group(consumer_group => 'LOW_GROUP', comment => 'Consumer group for low-priority sessions');exception when error_num1 then NULL;when others then raise; end;COMMIT; END; 
+
+ORA-39083: Fallo de creación del tipo de objeto PROCOBJ:"SYS"."INTERACTIVE_GROUP" con el error:
+ORA-65046: operación no permitida desde fuera de una base de datos de conexión
+
+El sql que falla es:
+BEGIN 
+declare error_num1 exception;PRAGMA EXCEPTION_INIT(error_num1, -29357);begin dbms_resource_manager.create_consumer_group(consumer_group => 'INTERACTIVE_GROUP', comment => 'Consumer group for interactive, OLTP operations');exception when error_num1 then NULL;when others then raise; end;COMMIT; END; 
+
+ORA-39083: Fallo de creación del tipo de objeto PROCOBJ:"SYS"."BATCH_GROUP" con el error:
+ORA-65046: operación no permitida desde fuera de una base de datos de conexión
+
+El sql que falla es:
+BEGIN 
+declare error_num1 exception;PRAGMA EXCEPTION_INIT(error_num1, -29357);begin dbms_resource_manager.create_consumer_group(consumer_group => 'BATCH_GROUP', comment => 'Consumer group for batch operations');exception when error_num1 then NULL;when others then raise; end;COMMIT; END; 
+
+Procesando el tipo de objeto DATABASE_EXPORT/SYSTEM_PROCOBJACT/POST_SYSTEM_ACTIONS/PROCACT_SYSTEM
+Procesando el tipo de objeto DATABASE_EXPORT/SCHEMA/PROCACT_SCHEMA
+ORA-39083: Fallo de creación del tipo de objeto PROCACT_SCHEMA con el error:
+ORA-31625: Se necesita el esquema LUIS para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+BEGIN 
+sys.dbms_logrep_imp.instantiate_schema(schema_name=>SYS_CONTEXT('USERENV','CURRENT_SCHEMA'), export_db_name=>'ORCL', inst_scn=>'8619379');COMMIT; END; 
+
+ORA-39083: Fallo de creación del tipo de objeto PROCACT_SCHEMA con el error:
+ORA-31625: Se necesita el esquema PACO para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+BEGIN 
+sys.dbms_logrep_imp.instantiate_schema(schema_name=>SYS_CONTEXT('USERENV','CURRENT_SCHEMA'), export_db_name=>'ORCL', inst_scn=>'8619379');COMMIT; END; 
+
+ORA-39083: Fallo de creación del tipo de objeto PROCACT_SCHEMA con el error:
+ORA-31625: Se necesita el esquema MORALG para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+BEGIN 
+sys.dbms_logrep_imp.instantiate_schema(schema_name=>SYS_CONTEXT('USERENV','CURRENT_SCHEMA'), export_db_name=>'ORCL', inst_scn=>'8619379');COMMIT; END; 
+
+ORA-39083: Fallo de creación del tipo de objeto PROCACT_SCHEMA con el error:
+ORA-31625: Se necesita el esquema C##JOSEMARI para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+BEGIN 
+sys.dbms_logrep_imp.instantiate_schema(schema_name=>SYS_CONTEXT('USERENV','CURRENT_SCHEMA'), export_db_name=>'ORCL', inst_scn=>'8619379');COMMIT; END; 
+
+ORA-39083: Fallo de creación del tipo de objeto PROCACT_SCHEMA con el error:
+ORA-31625: Se necesita el esquema PRUEBAPALOMA para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+BEGIN 
+sys.dbms_logrep_imp.instantiate_schema(schema_name=>SYS_CONTEXT('USERENV','CURRENT_SCHEMA'), export_db_name=>'ORCL', inst_scn=>'8619379');COMMIT; END; 
+
+ORA-39083: Fallo de creación del tipo de objeto PROCACT_SCHEMA con el error:
+ORA-31625: Se necesita el esquema PRUEBAPASS para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+BEGIN 
+sys.dbms_logrep_imp.instantiate_schema(schema_name=>SYS_CONTEXT('USERENV','CURRENT_SCHEMA'), export_db_name=>'ORCL', inst_scn=>'8619379');COMMIT; END; 
+
+ORA-39083: Fallo de creación del tipo de objeto PROCACT_SCHEMA con el error:
+ORA-31625: Se necesita el esquema USUARIOPRUEBA para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+BEGIN 
+sys.dbms_logrep_imp.instantiate_schema(schema_name=>SYS_CONTEXT('USERENV','CURRENT_SCHEMA'), export_db_name=>'ORCL', inst_scn=>'8619379');COMMIT; END; 
+
+ORA-39083: Fallo de creación del tipo de objeto PROCACT_SCHEMA con el error:
+ORA-31625: Se necesita el esquema NUEVOUSUARIO para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+BEGIN 
+sys.dbms_logrep_imp.instantiate_schema(schema_name=>SYS_CONTEXT('USERENV','CURRENT_SCHEMA'), export_db_name=>'ORCL', inst_scn=>'8619379');COMMIT; END; 
+
+ORA-39083: Fallo de creación del tipo de objeto PROCACT_SCHEMA con el error:
+ORA-31625: Se necesita el esquema USUARIO1 para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+BEGIN 
+sys.dbms_logrep_imp.instantiate_schema(schema_name=>SYS_CONTEXT('USERENV','CURRENT_SCHEMA'), export_db_name=>'ORCL', inst_scn=>'8619379');COMMIT; END; 
+
+ORA-39083: Fallo de creación del tipo de objeto PROCACT_SCHEMA con el error:
+ORA-31625: Se necesita el esquema USUARIOSINPRIV para importar este objeto, pero es inaccesible
+ORA-01435: este usuario no existe
+
+El sql que falla es:
+BEGIN 
+sys.dbms_logrep_imp.instantiate_schema(schema_name=>SYS_CONTEXT('USERENV','CURRENT_SCHEMA'), export_db_name=>'ORCL', inst_scn=>'8619379');COMMIT; END; 
+
+Procesando el tipo de objeto DATABASE_EXPORT/EARLY_OPTIONS/VIEWS_AS_TABLES/TABLE
+Procesando el tipo de objeto DATABASE_EXPORT/EARLY_OPTIONS/VIEWS_AS_TABLES/TABLE_DATA
+. . "SYS"."KU$_EXPORT_USER_MAP"                 6.257 KB      47 filas importadas
+Procesando el tipo de objeto DATABASE_EXPORT/EARLY_POST_INSTANCE_IMPCALLOUT/MARKER
+Procesando el tipo de objeto DATABASE_EXPORT/NORMAL_OPTIONS/TABLE
+Procesando el tipo de objeto DATABASE_EXPORT/NORMAL_OPTIONS/TABLE_DATA
+. . "SYS"."AMGT$DP$AUD$"                        27.26 KB      24 filas importadas
+. . "SYSTEM"."REDO_DB_TMP"                      25.59 KB       1 filas importadas
+. . "ORDDATA"."ORDDCM_DOCS_TRANSIENT"           252.9 KB       9 filas importadas
+. . "WMSYS"."E$WORKSPACES_TABLE$"               12.10 KB       1 filas importadas
+. . "WMSYS"."E$HINT_TABLE$"                     9.984 KB      97 filas importadas
+. . "SYS"."AMGT$DP$DAM_CLEANUP_EVENTS$"         7.320 KB       4 filas importadas
+. . "WMSYS"."E$WORKSPACE_PRIV_TABLE$"           7.078 KB      11 filas importadas
+. . "SYS"."AMGT$DP$DAM_CONFIG_PARAM$"           6.531 KB      14 filas importadas
+. . "SYS"."DP$TSDP_SUBPOL$"                     6.328 KB       1 filas importadas
+. . "WMSYS"."E$NEXTVER_TABLE$"                  6.375 KB       1 filas importadas
+. . "WMSYS"."E$ENV_VARS$"                       6.015 KB       3 filas importadas
+. . "SYS"."DP$TSDP_PARAMETER$"                  5.953 KB       1 filas importadas
+. . "SYS"."DP$TSDP_POLICY$"                     5.921 KB       1 filas importadas
+. . "WMSYS"."E$VERSION_HIERARCHY_TABLE$"        5.984 KB       1 filas importadas
+. . "WMSYS"."E$EVENTS_INFO$"                    5.812 KB      12 filas importadas
+. . "LBACSYS"."OLS_DP$OLS$AUDIT"                    0 KB       0 filas importadas
+. . "LBACSYS"."OLS_DP$OLS$COMPARTMENTS"             0 KB       0 filas importadas
+. . "LBACSYS"."OLS_DP$OLS$GROUPS"                   0 KB       0 filas importadas
+. . "LBACSYS"."OLS_DP$OLS$LAB"                      0 KB       0 filas importadas
+. . "LBACSYS"."OLS_DP$OLS$LEVELS"                   0 KB       0 filas importadas
+. . "LBACSYS"."OLS_DP$OLS$POL"                      0 KB       0 filas importadas
+. . "LBACSYS"."OLS_DP$OLS$POLS"                     0 KB       0 filas importadas
+. . "LBACSYS"."OLS_DP$OLS$POLT"                     0 KB       0 filas importadas
+. . "LBACSYS"."OLS_DP$OLS$PROFILE"                  0 KB       0 filas importadas
+. . "LBACSYS"."OLS_DP$OLS$PROG"                     0 KB       0 filas importadas
+. . "LBACSYS"."OLS_DP$OLS$USER"                     0 KB       0 filas importadas
+. . "SYS"."AMGT$DP$DAM_CLEANUP_JOBS$"               0 KB       0 filas importadas
+. . "SYS"."DP$TSDP_ASSOCIATION$"                    0 KB       0 filas importadas
+. . "SYS"."DP$TSDP_CONDITION$"                      0 KB       0 filas importadas
+. . "SYS"."DP$TSDP_FEATURE_POLICY$"                 0 KB       0 filas importadas
+. . "SYS"."DP$TSDP_PROTECTION$"                     0 KB       0 filas importadas
+. . "SYS"."DP$TSDP_SENSITIVE_DATA$"                 0 KB       0 filas importadas
+. . "SYS"."DP$TSDP_SENSITIVE_TYPE$"                 0 KB       0 filas importadas
+. . "SYS"."DP$TSDP_SOURCE$"                         0 KB       0 filas importadas
+. . "SYSTEM"."REDO_LOG_TMP"                         0 KB       0 filas importadas
+. . "WMSYS"."E$BATCH_COMPRESSIBLE_TABLES$"          0 KB       0 filas importadas
+. . "WMSYS"."E$CONS_COLUMNS$"                       0 KB       0 filas importadas
+. . "WMSYS"."E$CONSTRAINTS_TABLE$"                  0 KB       0 filas importadas
+. . "WMSYS"."E$LOCKROWS_INFO$"                      0 KB       0 filas importadas
+. . "WMSYS"."E$MODIFIED_TABLES$"                    0 KB       0 filas importadas
+. . "WMSYS"."E$MP_GRAPH_WORKSPACES_TABLE$"          0 KB       0 filas importadas
+. . "WMSYS"."E$MP_PARENT_WORKSPACES_TABLE$"         0 KB       0 filas importadas
+. . "WMSYS"."E$NESTED_COLUMNS_TABLE$"               0 KB       0 filas importadas
+. . "WMSYS"."E$RESOLVE_WORKSPACES_TABLE$"           0 KB       0 filas importadas
+. . "WMSYS"."E$RIC_LOCKING_TABLE$"                  0 KB       0 filas importadas
+. . "WMSYS"."E$RIC_TABLE$"                          0 KB       0 filas importadas
+. . "WMSYS"."E$RIC_TRIGGERS_TABLE$"                 0 KB       0 filas importadas
+. . "WMSYS"."E$UDTRIG_DISPATCH_PROCS$"              0 KB       0 filas importadas
+. . "WMSYS"."E$UDTRIG_INFO$"                        0 KB       0 filas importadas
+. . "WMSYS"."E$VERSION_TABLE$"                      0 KB       0 filas importadas
+. . "WMSYS"."E$VT_ERRORS_TABLE$"                    0 KB       0 filas importadas
+. . "WMSYS"."E$WORKSPACE_SAVEPOINTS_TABLE$"         0 KB       0 filas importadas
+Procesando el tipo de objeto DATABASE_EXPORT/NORMAL_OPTIONS/VIEWS_AS_TABLES/TABLE
+Procesando el tipo de objeto DATABASE_EXPORT/NORMAL_OPTIONS/VIEWS_AS_TABLES/TABLE_DATA
+. . "MDSYS"."RDF_PARAM$TBL"                     6.515 KB       3 filas importadas
+. . "SYS"."AMGT$DP$AUDTAB$TBS$FOR_EXPORT"       5.953 KB       2 filas importadas
+. . "SYS"."DP$DBA_SENSITIVE_DATA"                   0 KB       0 filas importadas
+. . "SYS"."DP$DBA_TSDP_POLICY_PROTECTION"           0 KB       0 filas importadas
+. . "SYS"."AMGT$DP$FGA_LOG$FOR_EXPORT"          18.19 KB       2 filas importadas
+. . "SYS"."NACL$_ACE_IMP"                           0 KB       0 filas importadas
+. . "SYS"."NACL$_HOST_IMP"                      6.976 KB       2 filas importadas
+. . "SYS"."NACL$_WALLET_IMP"                        0 KB       0 filas importadas
+. . "SYS"."DATAPUMP$SQL$"                           0 KB       0 filas importadas
+. . "SYS"."DATAPUMP$SQLOBJ$AUXDATA"                 0 KB       0 filas importadas
+. . "SYS"."DATAPUMP$SQLOBJ$DATA"                    0 KB       0 filas importadas
+. . "SYS"."DATAPUMP$SQLOBJ$"                        0 KB       0 filas importadas
+. . "SYS"."DATAPUMP$SQLOBJ$PLAN"                    0 KB       0 filas importadas
+. . "SYS"."DATAPUMP$SQL$TEXT"                       0 KB       0 filas importadas
+. . "SYSTEM"."SCHEDULER_JOB_ARGS_TMP"               0 KB       0 filas importadas
+. . "SYSTEM"."SCHEDULER_PROGRAM_ARGS_TMP"       9.515 KB      12 filas importadas
+. . "WMSYS"."E$EXP_MAP"                         7.718 KB       3 filas importadas
+. . "WMSYS"."E$METADATA_MAP"                        0 KB       0 filas importadas
+Procesando el tipo de objeto DATABASE_EXPORT/NORMAL_POST_INSTANCE_IMPCALLOUT/MARKER
+Procesando el tipo de objeto DATABASE_EXPORT/SCHEMA/TABLE/TABLE
+ORA-39083: Fallo de creación del tipo de objeto TABLE:"LUIS"."HOLA" con el error:
+ORA-01918: el usuario 'LUIS' no existe
+
+El sql que falla es:
+CREATE TABLE "LUIS"."HOLA" ("NOMBRE" VARCHAR2(30 BYTE)) SEGMENT CREATION DEFERRED PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 NOCOMPRESS LOGGING TABLESPACE "USERS" 
+
+Procesando el tipo de objeto DATABASE_EXPORT/SCHEMA/TABLE/TABLE_DATA
+. . "SYSTEM"."SYS_EXPORT_SCHEMA_01"                 0 KB       0 filas importadas
+Procesando el tipo de objeto DATABASE_EXPORT/SCHEMA/TABLE/COMMENT
+Procesando el tipo de objeto DATABASE_EXPORT/SCHEMA/TABLE/INDEX/STATISTICS/INDEX_STATISTICS
+Procesando el tipo de objeto DATABASE_EXPORT/SCHEMA/TABLE/STATISTICS/TABLE_STATISTICS
+Procesando el tipo de objeto DATABASE_EXPORT/STATISTICS/MARKER
+Procesando el tipo de objeto DATABASE_EXPORT/FINAL_POST_INSTANCE_IMPCALLOUT/MARKER
+Procesando el tipo de objeto DATABASE_EXPORT/SCHEMA/POST_SCHEMA/PROCACT_SCHEMA
+Procesando el tipo de objeto DATABASE_EXPORT/AUDIT_UNIFIED/AUDIT_POLICY_ENABLE
+Procesando el tipo de objeto DATABASE_EXPORT/AUDIT
+Procesando el tipo de objeto DATABASE_EXPORT/POST_SYSTEM_IMPCALLOUT/MARKER
+El trabajo "SYSTEM"."SYS_IMPORT_FULL_01" ha terminado con 55 error(es) en Sáb Feb 1 00:56:05 2020 elapsed 0 00:04:37
+
+```
+
+
+Tenemos que crear y excluir a los usuarios, para ello debemos hacer que los datos apunten hacia unos nuevos usuarios.
+
+2. Cread la estructura de tablas de uno de vuestros proyectos de 1º en ORACLE y, mediante una exportación cread un script básico de creación de las tablas con las respectivas restricciones. Realizad de la forma más automatizada posible las acciones necesarias para transformar ese script generado por ORACLE en un script de creación de tablas para Postgres. Documentar todas las acciones realizadas y el código usado para llevarlas a cabo.
+
+Importamos el siguiente script en el usuario AleM
+
+```
+CREATE TABLE conflictos (
+    codigo          VARCHAR2(3),
+    nombre          VARCHAR2(50),
+    causa           VARCHAR2(15),
+    CONSTRAINT pk_codigo_conflictos PRIMARY KEY(codigo),
+    CONSTRAINT causa_seleccion CHECK(upper(causa) in ('RACIAL','ECONOMICO','RELIGIOSO','DESCONOCIDA')),
+    CONSTRAINT notnull_nombreconfl CHECK(nombre IS NOT NULL),
+    CONSTRAINT unique_nombreconfl UNIQUE(nombre)
+);
+
+CREATE TABLE paises (
+    codigo                  VARCHAR2(5),
+    nombre                  VARCHAR2(30),
+    capital                 VARCHAR2(30),
+    CONSTRAINT pk_codigo_paises PRIMARY KEY(codigo),
+    CONSTRAINT cod_letrapais_dosdig CHECK (REGEXP_LIKE(codigo, '^[A-Z]{2}[0-9]{2}$','c') AND SUBSTR(codigo,1,2) in ('EU','AS','AF','NA','SA','OC','AN')),
+    CONSTRAINT notnull_nombrepais CHECK(nombre IS NOT NULL),
+    CONSTRAINT unique_nombrepais UNIQUE(nombre)
+);
+
+CREATE TABLE historial_de_conflictos (
+    codigo_conflicto        VARCHAR2(3),
+    codigo_pais             VARCHAR2(5),
+    num_heridos             NUMBER(6) DEFAULT 0,
+    num_muertos             NUMBER(6) DEFAULT 0,
+    CONSTRAINT pk_codconflicto_codpais PRIMARY KEY(codigo_conflicto,codigo_pais),
+    CONSTRAINT fk_cod_conflicto FOREIGN KEY(codigo_conflicto) REFERENCES conflictos(codigo),
+    CONSTRAINT fk_cod_pais FOREIGN KEY(codigo_pais) REFERENCES paises(codigo)
+);
+
+CREATE TABLE grupos_armados (
+    codigo                  VARCHAR2(5),
+    nombre                  VARCHAR2(50),
+    CONSTRAINT pk_codigo_gruparmados PRIMARY KEY(codigo),
+    CONSTRAINT codigo_ABC CHECK(REGEXP_LIKE(codigo, '^[ABC]-[0-9]{1,3}$', 'c')),
+    CONSTRAINT notnull_nombregrup CHECK(nombre IS NOT NULL),
+    CONSTRAINT unique_nombregrup UNIQUE(nombre)
+);
+
+CREATE TABLE his_intervenciones_armadas (
+    codigo_gruparmado       VARCHAR2(5),
+    codigo_conflicto        VARCHAR2(3),
+    fecha_incorporacion     DATE,
+    fecha_retirada          DATE,
+    CONSTRAINT pk_codgruparm_codconf_fecha PRIMARY KEY(codigo_gruparmado,codigo_conflicto,fecha_incorporacion),
+    CONSTRAINT fk_cod_gruparmado_armadas FOREIGN KEY(codigo_gruparmado) REFERENCES grupos_armados(codigo),
+    CONSTRAINT fk_cod_conflicto_armadas FOREIGN KEY(codigo_conflicto) REFERENCES conflictos(codigo),
+    CONSTRAINT mas_abril2001 CHECK(to_char(fecha_incorporacion, 'YYYY/MM') > '2001/04')
+);
+
+
+CREATE TABLE organizaciones (
+    codigo                  VARCHAR2(3),
+    codigo_orgdepen         VARCHAR2(3),
+    nombre                  VARCHAR2(30),
+    numpersonas_conflicto   NUMBER(3),
+    tipo                    VARCHAR2(30),
+    CONSTRAINT pk_codigo_organizaciones PRIMARY KEY(codigo),
+    CONSTRAINT fk_codigo_orgdepend FOREIGN KEY(codigo_orgdepen) REFERENCES organizaciones(codigo),
+    CONSTRAINT iniciales_mayus CHECK(nombre = INITCAP(nombre)),
+    CONSTRAINT notnull_nombreorg CHECK(nombre IS NOT NULL),
+    CONSTRAINT notnull_tipoorg CHECK(tipo IS NOT NULL),
+    CONSTRAINT unique_nombreorg UNIQUE(nombre)
+);
+
+CREATE TABLE his_intervenciones_mediadoras (
+    codigo_org              VARCHAR2(3),
+    codigo_conflicto        VARCHAR2(3),
+    fecha_incorporacion     DATE,
+    fecha_retirada          DATE,
+    tipo_ayuda              VARCHAR2(30),
+    CONSTRAINT pk_orga_conflitos_fecha PRIMARY KEY(codigo_org,codigo_conflicto,fecha_incorporacion),
+    CONSTRAINT fk_cod_orga FOREIGN KEY(codigo_org) REFERENCES organizaciones(codigo),
+    CONSTRAINT fk_cod_conflictos FOREIGN KEY(codigo_conflicto) REFERENCES conflictos(codigo)
+);
+
+CREATE TABLE envios (
+    codigo                  VARCHAR2(3),
+    codigo_org              VARCHAR2(3),
+    fecha_hora              DATE,
+    CONSTRAINT pk_codigo_envios PRIMARY KEY(codigo),
+    CONSTRAINT fk_cod_org FOREIGN KEY(codigo_org) REFERENCES organizaciones(codigo),
+    CONSTRAINT entre8_16 CHECK(to_char(fecha_hora, 'HH24:MI') between '08:00' and '16:00'),
+    CONSTRAINT dia1_15 CHECK(to_char(fecha_hora, 'DD') = '01' OR to_char(fecha_hora, 'DD') = '15')
+);
+
+CREATE TABLE productos (
+    nombre                  VARCHAR2(20),
+    descripcion             VARCHAR2(100),
+    CONSTRAINT pk_nombre_productos PRIMARY KEY(nombre)
+);
+
+
+CREATE TABLE campos_refugiados (
+    codigo                  VARCHAR2(3),
+    nombre                  VARCHAR2(30),
+    zona_asentamiento       VARCHAR2(50),
+    CONSTRAINT  pk_codigo_camprefugiados PRIMARY KEY(codigo),
+    CONSTRAINT notnull_nombrecamp CHECK(nombre IS NOT NULL),
+    CONSTRAINT notnull_zonacamp CHECK(zona_asentamiento IS NOT NULL),
+    CONSTRAINT unique_nombrcamp UNIQUE(nombre)
+);
+
+CREATE TABLE paquetes  (
+    codigo                  VARCHAR2(3),
+    codigo_refugio       VARCHAR2(3),
+    codigo_envio            VARCHAR2(3),
+    nombre_producto         VARCHAR2(30),
+    cantidad                NUMBER(4),
+    CONSTRAINT pk_codigo_paquetes PRIMARY KEY(codigo),
+    CONSTRAINT fk_cod_refugiados FOREIGN KEY(codigo_refugio) REFERENCES campos_refugiados(codigo),
+    CONSTRAINT fk_cod_envio FOREIGN KEY(codigo_envio) REFERENCES envios(codigo),
+    CONSTRAINT fk_nombre_productos FOREIGN KEY(nombre_producto) REFERENCES productos(nombre),
+    CONSTRAINT notnull_cantidadpaquete CHECK(cantidad IS NOT NULL)
+);
+
+CREATE TABLE refugiados (
+    codigo                  VARCHAR2(4),
+    codigo_refugio          VARCHAR2(4),
+    nombre                  VARCHAR2(40),
+    edad                    NUMERIC(3),
+    fecha_llegada           DATE,
+    fecha_salida            DATE,
+    CONSTRAINT pk_refugiado_refugio PRIMARY KEY(codigo,codigo_refugio),
+    CONSTRAINT notnull_nombrerefug CHECK(nombre IS NOT NULL),
+    CONSTRAINT notnull_edadrefug CHECK(edad IS NOT NULL)
+);
+
+```
+
+SELECT A.TABLE_NAME,
+       A.COLUMN_NAME,
+       A.CONSTRAINT_NAME, 
+       C.OWNER
+FROM   ALL_CONS_COLUMNS A, 
+       ALL_CONSTRAINTS C  
+WHERE  A.CONSTRAINT_NAME = C.CONSTRAINT_NAME 
+AND    C.CONSTRAINT_TYPE = 'R'
+AND    C.OWNER = 'MyDBLoginName';
+
+Ahora vamos a crear el procedimiento.
+
+Create or replace function SacarPrimaryKeys(p_nombretabla varchar2)
+return varchar2
+is
+	cursor c_primary is
+	select COLUMN_NAME
+	FROM DBA_CONS_COLUMNS
+	WHERE CONSTRAINT_NAME IN ( SELECT CONSTRAINT_NAME
+	FROM DBA_CONSTRAINTS
+	where CONSTRAINT_TYPE = 'P'
+	)
+	and table_name=p_nombretabla
+	ORDER BY TABLE_NAME , POSITION;
+	v_cadena varchar2(100);
+	v_contador number(2):=0;
+	v_contador2 number(2):=0;
+begin
+	for v_primary in c_primary loop
+		v_contador:=v_contador+1;
+	end loop;
+	if v_contador = 1 then
+		for v_primary in c_primary loop
+			return v_primary.column_name;
+		end loop;
+	else
+		for v_primary in c_primary loop
+			v_contador2:=v_contador2+1;
+			if v_contador-1 = v_contador2 then
+				v_cadena:=v_cadena||v_primary.column_name||',';
+			else
+				v_cadena:=v_cadena||v_primary.column_name;
+			end if;
+		end loop;
+		return v_cadena;
+	end if;		
+end;
+/
+
+Create or replace procedure MirarConstraintsTabla(p_nombretabla varchar2)
+is
+	cursor c_constraint is
+	Select constraint_name,constraint_type,search_condition,R_CONSTRAINT_NAME,R_OWNER
+	from dba_constraints
+	where table_name=p_nombretabla;
+	v_tipo varchar2(500);
+	v_primary varchar2(100);
+begin
+	for v_constraint in c_constraint loop
+		CASE v_constraint.constraint_type
+			WHEN 'C' then
+				if v_constraint.search_condition like '%regexp_like%' or v_constraint.search_condition like '%REGEXP_LIKE%' then
+					v_tipo:='check( '||v_constraint.search_condition||' ),';
+				else
+					v_tipo:='check( '||v_constraint.search_condition||' ),';
+				end if;
+
+			WHEN 'P' then
+				v_primary:=SacarPrimaryKeys(p_nombretabla);
+				v_tipo:='PRIMARY KEY('||v_primary||'),';
+			WHEN 'R' Then
+				v_tipo:='FOREIGN KEY('||v_constraint.r_OWNER||')';
+			WHEN 'V' then
+				v_tipo:='V';
+			WHEN 'U' then
+				v_tipo:='U';
+		END CASE;
+		dbms_output.put_line('CONSTRAINT '||v_constraint.constraint_name||chr(9)||v_tipo);
+	end loop;
+end;
+/
+
+Create or replace procedure MirarFilasTabla(p_nombretabla varchar2)
+is
+	cursor c_indices is
+	Select column_name,data_type,data_length
+	from dba_tab_columns
+	where table_name=p_nombretabla;
+	v_tipo varchar2(40);
+begin
+	for v_indices in c_indices loop
+		CASE v_indices.data_type
+			when 'VARCHAR2' then
+				v_tipo:='VARCHAR';
+			when 'NUMBER' then
+				v_tipo:='NUMERIC';
+			when 'DATE' then
+				v_tipo:='TIMESTAMP';
+		END CASE;
+		dbms_output.put_line(v_indices.column_name||chr(9)||v_tipo||'('||v_indices.data_length||')'||',');
+	end loop;
+end;
+/
+
+Create or replace procedure OracleToPostgres
+is
+	cursor c_tablas is
+	SELECT table_name
+	FROM dba_tables
+        WHERE OWNER='ALEM';
+begin
+	for v_tablas in c_tablas loop
+		dbms_output.put_line('CREATE TABLE '||v_tablas.table_name||' (');
+		MirarFilasTabla(v_tablas.table_name);
+		MirarConstraintsTabla(v_tablas.table_name);
+		dbms_output.put_line(');');
+	end loop;
+end;
+/
+
+
+
+3. SQL*Loader es una herramienta que sirve para cargar grandes volúmenes de datos en una instancia de ORACLE. Exportad los datos de uno de vuestros proyectos de 1º desde Postgres a  texto plano con delimitadores y emplead SQL*Loader para realizar el proceso de carga de dichos datos a una instancia ORACLE. Debéis explicar los distintos ficheros de configuración y de log que tiene SQL*Loader.

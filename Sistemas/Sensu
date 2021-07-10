@@ -1,0 +1,712 @@
+Vamos a instalar sensu para monitorizar nuestros sistemas croqueta,salmorejo, tortilla y serranito. Lo instalaremos en serranito.
+
+Primero de todo vamos a actualizar el sistema
+<pre>
+apt update
+apt upgrade
+</pre>
+
+Como sensu está escrito en ruby el cual usa RabbitMQ,debemos primero instalar RabbitMQ para que pueda funcionar sensu, por lo que primero instalaremos Erlang Solutions que es lo que utiliza RabbitMQ para funcionar.
+<pre>
+wget https://packages.erlang-solutions.com/erlang-solutions_2.0_all.deb
+wget -O- https://packages.erlang-solutions.com/ubuntu/erlang_solutions.asc | sudo apt-key add -
+sudo dpkg -i erlang-solutions_2.0_all.deb
+</pre>
+
+Ahora actualizamos y instalamos erlang
+<pre>
+apt update
+sudo apt install socat erlang-nox
+</pre>
+
+Y nos vamos a instalar ahora RabbitMQ.
+<pre>
+wget -O- https://dl.bintray.com/rabbitmq/Keys/rabbitmq-release-signing-key.asc | sudo apt-key add -
+wget -O- https://www.rabbitmq.com/rabbitmq-release-signing-key.asc | sudo apt-key add -
+echo "deb https://dl.bintray.com/rabbitmq/debian $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/rabbitmq.list
+sudo apt-get update
+sudo apt-get install rabbitmq-server
+systemctl enable rabbitmq-server
+</pre>
+
+Y ahora vamos a crear el vhost y usuario para sensu.
+<pre>
+rabbitmqctl add_vhost /sensu
+rabbitmqctl add_user sensu
+rabbitmqctl set_permissions -p /sensu sensu ".*" ".*" ".*"
+</pre>
+
+Para almacenar los datos, sensu utiliza redis, por lo que debemos instalarlo
+<pre>
+apt-get install redis-server apt-transport-https
+systemctl enable redis-server
+</pre>
+
+Y ahora vamos a instalar y configurar sensu. Importaremos la clave, importaremos el repositorio y lo instalaremos
+<pre>
+wget -q https://eol-repositories.sensuapp.org/apt/pubkey.gpg -O- | sudo apt-key add -
+export CODENAME=bionic
+echo "deb     https://eol-repositories.sensuapp.org/apt $CODENAME main" | sudo tee /etc/apt/sources.list.d/sensu.list
+apt update
+apt install sensu
+</pre>
+
+Ahora añadiremos en /etc/sensu/conf.d/rabbitmq.json lo siguiente, que es para que sensu pueda acceder a rabbitmq
+<pre>
+{
+  "rabbitmq": {
+    "host": "127.0.0.1",
+    "port": 5672,
+    "vhost": "/sensu",
+    "user": "sensu",
+    "password": "Contraseña"
+  }
+}
+</pre>
+
+En /etc/sensu/conf.d/redis.json ponemos, que es para que pueda acceder sensu a redis
+<pre>
+{
+  "redis": {
+    "host": "127.0.0.1",
+    "port": 6379
+  }
+}
+</pre>
+
+Y en /etc/sensu/conf.d/api.json ponemos
+<pre>
+{
+  "api": {
+    "host": "localhost",
+    "bind": "0.0.0.0",
+    "port": 4567
+  }
+}
+</pre>
+
+Para configurar el cliente del servidor, debemos hacer en /etc/sensu/conf.d/client.json lo siguiente:
+<pre>
+{
+          "client": {
+            "name": "sensu-server",
+            "address": "127.0.0.1",
+            "environment": "sensu",
+            "subscriptions": ["linux"],
+            "keepalive":
+            {
+           "handler": "mailer",
+            "thresholds": {
+            "warning": 250,
+            "critical": 300
+          }
+            },
+"socket": {
+          "bind": "127.0.0.1",
+          "port": 3030
+            }
+          }
+}
+</pre>
+
+Y también el transport de rabbitmq en /etc/sensu/conf.d/transport.json
+<pre>
+{
+"transport": 
+{
+"name": "rabbitmq",
+"reconnect_on_error": true
+}
+}
+</pre>
+
+Ahora vamos a instalar el dashboard de sensu, en este caso uchiwa, que está en el repositorio de sensu anteriormente instalado.
+<pre>
+apt install uchiwa
+</pre>
+
+Y habilitamos que sensu pueda acceder a uchiha en /etc/sensu/uchiwa.json
+<pre>
+{
+  "object": [
+    {
+	  "name": "Sensu",
+	  "host": "localhost",
+	  "port": 4567,
+	  "timeout": 10
+    }
+  ],
+  "uchiwa": {
+    "host": "0.0.0.0",
+    "port": 8080,
+    "refresh": 10
+  }
+}
+</pre>
+
+Y vamos a activar todos los servicios
+<pre>
+sudo systemctl start sensu-server
+sudo systemctl enable sensu-server
+sudo systemctl start sensu-api
+sudo systemctl enable sensu-api
+sudo systemctl start sensu-client
+sudo systemctl enable sensu-client
+sudo systemctl start uchiwa
+sudo systemctl enable uchiwa
+</pre>
+
+Ahora intentamos acceder al serranito:3000
+
+!uchiwa.png!
+
+También si queremos, podemos añadir unos cuantos plugins para monitorizar el cpu,ram, etc
+<pre>
+sensu-install -p cpu-checks
+sensu-install -p disk-checks  
+sensu-install -p memory-checks  
+sensu-install -p process-checks  
+sensu-install -p load-checks  
+sensu-install -p mailer
+</pre>
+
+Para la recolección de métricas instalamos
+<pre>
+sensu-install -p vmstats  
+sensu-install -p postfix
+sensu-install -p php-fpm
+sensu-install -p nginx
+sensu-install -p graphite
+</pre>
+
+Para añadir dichos plugins debemos ubicar la carpeta /etc/sensu/conf.d y añadir los siguientes ficheros
+check_cpu_linux.json
+<pre>
+{
+      "checks": {
+         "check-cpu-linux": {
+       "handlers": ["mailer"],
+       "command": "/opt/sensu/embedded/bin/check-cpu.rb -w 80 -c 90 ",
+       "interval": 60,
+       "occurrences": 5,
+          "subscribers": [ "linux" ]
+       }
+         }
+}
+</pre>
+
+check_memory_linux.json
+<pre>
+{
+      "checks": {
+        "check_memory_linux": {
+      "handlers": ["mailer"],
+         "command": "/opt/sensu/embedded/bin/check-memory-percent.rb -w 90 -c 95",
+      "interval": 60,
+      "occurrences": 5,
+      "subscribers": [ "linux" ]
+        }
+      }
+}
+</pre>
+
+check_disk_usage_linux.json
+<pre>
+{
+     "checks": {
+        "check-disk-usage-linux": {
+"handlers": ["mailer"],
+      "command": "/opt/sensu/embedded/bin/check-disk-usage.rb -w 80 -c 90",
+      "interval": 60,
+      "occurrences": 5,
+      "subscribers": [ "linux" ]
+        }
+      }
+}
+</pre>
+
+Activamos las alertas en /etc/sensu/conf.d con los siguientes ficheros
+
+handler_mail.json
+<pre>
+{
+          "handlers": {
+            "mailer": {
+          "type": "pipe",
+          "command": "/opt/sensu/embedded/bin/handler-mailer.rb"
+            }
+          }
+}
+</pre>
+
+Y configuramos el sistema de emails en mailer.json
+<pre>
+{
+            "mailer": {
+      	    "admin_gui": "http://serranito.alejandro.gonzalonazareno.org:8080/",
+            "mail_from": "debian@alejandro.gonzalonazareno.org",
+            "mail_to": "alerts@powerupcloud.com",
+            "smtp_address": "correo.alejandro.gonzalonazareno.org",
+            "smtp_port": "25",
+            "smtp_domain": "alejandro.gonzalonazareno.org"
+            }
+}
+</pre>
+
+Y reiniciamos el servicio
+<pre>
+systemctl restart sensu-server
+</pre>
+
+Ahora vamos a instalar graphite, que es lo que utilizará grafana para recolectar las métricas.
+
+Clonamos los repositorios.
+<pre>
+git clone https://github.com/graphite-project/graphite-web.git
+git clone https://github.com/graphite-project/carbon.git
+git clone https://github.com/graphite-project/whisper.git
+git clone https://github.com/graphite-project/ceres.git
+</pre>
+
+Vamos a acceder a las carpetas y pondremos
+<pre>
+python setup.py install
+</pre>
+
+Creamos la base de datos
+<pre>
+GRAPHITE_ROOT=/opt/graphite
+PYTHONPATH=$GRAPHITE_ROOT/webapp django-admin migrate --settings=graphite.settings
+PYTHONPATH=/opt/graphite/webapp django-admin createsuperuser --settings=graphite.settings
+PYTHONPATH=/opt/graphite/webapp django-admin collectstatic --noinput --settings=graphite.settings
+
+</pre>
+
+Ahora vamos a instalar el panel web de la siguiente manera:
+<pre>
+apt install libapache2-mod-wsgi
+root@serranito:/opt/graphite/conf# cp graphite.wsgi.example graphite.wsgi
+root@serranito:/opt/graphite/conf# cp carbon.conf.example carbon.conf
+root@serranito:/opt/graphite/conf# cp storage-schemas.conf.example storage-schemas.conf
+root@serranito:/opt# chown -R www-data: graphite/
+</pre>
+
+Y hacemos el virtual host
+<pre>
+<VirtualHost *:80>
+
+    ServerName serranito.alejandro.gonzalonazareno.org
+    DocumentRoot "/opt/graphite/webapp"
+    ErrorLog /opt/graphite/storage/log/webapp/error.log
+    CustomLog /opt/graphite/storage/log/webapp/access.log common
+
+    WSGIDaemonProcess graphite-web processes=5 threads=5 display-name='%{GROUP}' inactivity-timeout=120
+    WSGIProcessGroup graphite-web
+    WSGIApplicationGroup %{GLOBAL}
+    WSGIImportScript /opt/graphite/conf/graphite.wsgi process-group=graphite-web application-group=%{GLOBAL}
+
+    WSGIScriptAlias / /opt/graphite/conf/graphite.wsgi
+
+    Alias /static/ /opt/graphite/static/
+
+    <Directory /opt/graphite/static/>
+            <IfVersion < 2.4>
+                    Order deny,allow
+                    Allow from all
+            </IfVersion>
+            <IfVersion >= 2.4>
+                    Require all granted
+            </IfVersion>
+    </Directory>
+
+    <Directory /opt/graphite/conf/>
+            <IfVersion < 2.4>
+                    Order deny,allow
+                    Allow from all
+            </IfVersion>
+            <IfVersion >= 2.4>
+                    Require all granted
+            </IfVersion>
+    </Directory>
+</VirtualHost>
+</pre>
+
+Podemos comprobar que podemos acceder a graphite
+
+!graphite.png!
+
+Ahora instalaremos grafana, para ello primero tenemos que escoger el repositorio de grafana
+<pre>
+wget -q -O - https://packages.grafana.com/gpg.key | apt-key add -
+echo "deb https://packages.grafana.com/oss/deb stable main" >> /etc/apt/sources.list
+</pre>
+
+Y hacemos un update y lo instalamos
+<pre>
+apt update
+apt install grafana
+</pre>
+
+Podemos observar que lo tenemos instalado
+!grafana.png!
+
+Ahora vamos a instalar el handler de graphite.
+Para ello creamos las carpetas
+<pre>
+mkdir /etc/sensu/conf.d/handlers
+mkdir /etc/sensu/conf.d/mutators
+</pre>
+
+Y hacemos el fichero de handler para sensu en /etc/sensu/conf.d/handlers/graphite.json.
+
+<pre>
+{
+  "handlers": {
+    "graphite": {
+      "type": "tcp",
+      "timeout": 30,
+      "socket": {
+        "host": "127.0.0.1",
+        "port": 2003
+      },
+      "mutator": "graphite"
+    }
+  }
+}
+</pre>
+
+Y haremos el mutator para sensu en /etc/sensu/conf.d/mutators/graphite.json
+<pre>
+{
+  "mutators": {
+    "graphite": {
+      "command": "/opt/sensu/embedded/bin/mutator-graphite.rb"
+    }
+  }
+}
+
+</pre>
+
+metrics-vmstat.json
+<pre>
+{
+"checks": {
+"metric-vmstat": {
+"type": "metric",
+"command": "/opt/sensu/embedded/bin/metrics-vmstat.rb",
+"subscribers": ["linux"],
+"interval": 20,
+"handlers": ["graphite"]
+}
+}
+}
+
+</pre>
+
+Configuramos grafana para que acceda a graphite en Configuration->Data Sources->Graphite
+!grafana2.png!
+
+Luego iremos a Dashboard y haremos una nueva que sea Graph.
+
+
+
+Ahora lo que nos quedaría es que sensu pueda acceder a los clientes croqueta,salmorejo y tortilla, por lo que vamos a instalar sensu
+
+
+*Croqueta*
+
+Como croqueta es un sistema debian, vamos a instalarle el sensu-client con:
+
+<pre>
+wget -q https://eol-repositories.sensuapp.org/apt/pubkey.gpg -O- | sudo apt-key add -
+export CODENAME=bionic
+echo "deb     https://eol-repositories.sensuapp.org/apt $CODENAME main" | sudo tee /etc/apt/sources.list.d/sensu.list
+apt update
+apt install sensu
+</pre>
+
+Ahora en /etc/sensu/conf.d ponemos los siguientes ficheros:
+client.json
+<pre>
+{
+         "client": {
+           "name": "Croqueta-client",
+           "address": "10.0.0.15",
+           "subscriptions": [ "croqueta","linux" ],
+           "keepalive": {
+           "handler": "mailer",
+             "thresholds": {
+           "warning": 250,
+           "critical": 300
+             },
+             "refresh": 90
+           }
+         }
+}
+</pre>
+
+transport.json
+<pre>
+{
+  "transport": {
+    "name": "rabbitmq",
+    "reconnect_on_error": true
+  }
+}
+</pre>
+
+
+Instalamos la monitorización del sistema
+<pre>
+sensu-install -p cpu-checks
+sensu-install -p disk-checks  
+sensu-install -p memory-checks  
+sensu-install -p process-checks  
+sensu-install -p load-checks  
+sensu-install -p mailer
+</pre>
+
+Para la recolección de métricas instalamos
+<pre>
+sensu-install -p vmstats  
+sensu-install -p postfix
+sensu-install -p graphite
+</pre>
+
+Y en /etc/sensu/config.json ponemos en el apartado de rabbitmq:
+<pre>
+root@croqueta:/etc/sensu# cp config.json.example config.json
+
+nano config.json
+
+{
+  "rabbitmq": {
+    "host": "10.0.0.10",
+    "port": 5672,
+    "user": "sensu",
+    "password": "sensu",
+    "vhost": "/sensu"
+  },
+...
+</pre>
+
+Reinciamos el servicio y ya estará funcionando
+<pre>
+systemctl restart sensu-client
+</pre>
+
+
+*Tortilla*
+
+Como tortilla es un cliente ubuntu, podemos instalar sensu como anteriormente hemos hecho con croqueta.
+
+<pre>
+wget -q https://eol-repositories.sensuapp.org/apt/pubkey.gpg -O- | sudo apt-key add -
+export CODENAME=bionic
+echo "deb     https://eol-repositories.sensuapp.org/apt $CODENAME main" | sudo tee /etc/apt/sources.list.d/sensu.list
+apt update
+apt install sensu
+</pre>
+
+Hacemos un update y instalamos el paquete
+<pre>
+apt update
+apt install sensu
+systemctl start sensu-client
+systemctl enable sensu-client
+</pre>
+
+Ahora en /etc/sensu/conf.d ponemos los siguientes ficheros:
+client.json
+<pre>
+{
+         "client": {
+           "name": "Tortilla-client",
+           "address": "10.0.0.15",
+           "subscriptions": [ "tortilla","linux" ],
+           "keepalive": {
+           "handler": "mailer",
+             "thresholds": {
+           "warning": 250,
+           "critical": 300
+             },
+             "refresh": 90
+           }
+         }
+}
+</pre>
+
+transport.json
+<pre>
+{
+  "transport": {
+    "name": "rabbitmq",
+    "reconnect_on_error": true
+  }
+}
+</pre>
+
+Instalamos la monitorización del sistema
+<pre>
+sensu-install -p cpu-checks
+sensu-install -p disk-checks  
+sensu-install -p memory-checks  
+sensu-install -p process-checks  
+sensu-install -p load-checks  
+sensu-install -p mailer
+</pre>
+
+Para la recolección de métricas instalamos
+<pre>
+sensu-install -p vmstats
+sensu-install -p mysql
+sensu-install -p graphite
+</pre>
+
+Y en /etc/sensu/config.json ponemos en el apartado de rabbitmq:
+<pre>
+root@tortilla:/etc/sensu# cp config.json.example config.json
+
+nano config.json
+
+{
+  "rabbitmq": {
+    "host": "10.0.0.10",
+    "port": 5672,
+    "user": "sensu",
+    "password": "sensu",
+    "vhost": "/sensu"
+  },
+...
+</pre>
+
+
+*Salmorejo*
+
+Salmorejo en este caso está hecho en un Centos 8, por lo que cambia un poco respecto a los demás.
+
+Tenemos que crear el repositorio para instalar sensu, para ello hacemos
+<pre>
+echo '[sensu]
+name=sensu-main
+baseurl=http://repositories.sensuapp.org/yum/el/7/x86_64/
+gpgcheck=0
+enabled=1' | sudo tee /etc/yum.repos.d/sensu.repo
+</pre>
+
+Hacemos un update y instalamos sensu
+<pre>
+yum update
+yum install sensu
+</pre>
+
+
+Ahora en /etc/sensu/conf.d ponemos los siguientes ficheros:
+client.json
+<pre>
+{
+         "client": {
+           "name": "Salmorejo-client",
+           "address": "10.0.0.7",
+           "subscriptions": [ "salmorejo","linux" ],
+           "keepalive": {
+           "handler": "mailer",
+             "thresholds": {
+           "warning": 250,
+           "critical": 300
+             },
+             "refresh": 90
+           }
+         }
+}
+</pre>
+
+transport.json
+<pre>
+{
+  "transport": {
+    "name": "rabbitmq",
+    "reconnect_on_error": true
+  }
+}
+</pre>
+
+Instalamos la monitorización del sistema
+<pre>
+sensu-install -p cpu-checks
+sensu-install -p disk-checks  
+sensu-install -p memory-checks  
+sensu-install -p process-checks  
+sensu-install -p load-checks  
+sensu-install -p mailer
+</pre>
+
+
+Para la recolección de métricas instalamos
+<pre>
+sensu-install -p vmstats
+sensu-install -p nginx  
+sensu-install -p php-fpm
+</pre>
+
+Y en /etc/sensu/config.json ponemos en el apartado de rabbitmq:
+<pre>
+root@tortilla:/etc/sensu# cp config.json.example config.json
+
+nano config.json
+
+{
+  "rabbitmq": {
+    "host": "10.0.0.10",
+    "port": 5672,
+    "user": "sensu",
+    "password": "sensu",
+    "vhost": "/sensu"
+  },
+...
+</pre>
+
+
+Vemos como graphite coge las métricas de sensu
+
+!graphite3.png!
+
+
+Ahora para crear las gráficas que mostraremos en sensu, iremos a grafana, y haremos un nuevo dashboard tipo graph
+
+!grafana4.png!
+
+
+En queries escogemos Graphite, anteriormente creada y las metricas escogemos el nombre de la máquina y la métrica que queremos mostrar, por ejemplo mostraremos el uso de memoria de croqueta.
+
+!grafana5.png!
+
+
+Para importarlo en uchiwa, debemos darle a la opción de Direct Link rendered image, y copiamos el link.
+
+!grafana6.png!
+
+
+Y si queremos mostrarlo en sensu, cogemos ese link y detras pondremos
+<pre>
+&uchiwa_force_display_as_image=.jpg
+</pre>
+
+Como por ejemplo:
+<pre>
+{
+      "checks": {
+        "check_memory_linux": {
+      "handlers": ["mailer"],
+         "command": "/opt/sensu/embedded/bin/check-memory-percent.rb -w 90 -c 95",
+      "interval": 60,
+      "occurrences": 5,
+      "subscribers": [ "linux" ]
+        }
+      },
+      "check-memory":"http://serranito:3000/render/d-solo/DrT4X9UZk/croquetamemory?orgId=1&from=1581401871220&to=1581423471220&panelId=2&width=1000&height=500&tz=Europe%2FMadrid&uchiwa_force_display_as_image=.jpg"
+}
+</pre>
+
+
+!sensu.png!

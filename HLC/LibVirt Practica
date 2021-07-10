@@ -17,7 +17,7 @@ Ahora hacemos la NAT (nat.xml):
     <forward mode="nat"/> 
     <ip address="10.20.10.1" netmask="255.255.255.0"> 
         <dhcp> 
-           <range start="10.20.10.1" end="10.20.10.50"/> 
+           <range start="10.20.10.10" end="10.20.10.50"/> 
         </dhcp> 
     </ip> 
 </network>
@@ -191,7 +191,7 @@ usuario=>
 Habilitamos el acceso a postgresql desde el exterior
 <pre>
 echo 1 > /proc/sys/net/ipv4/ip_forward
-iptables -t nat -A PREROUTING -p tcp --dport 5432 -i enp7s0 -j DNAT --to 10.20.10.21
+iptables -t nat -A PREROUTING -p tcp --dport 5432 -i tun0 -j DNAT --to 10.20.10.21
 iptables -t nat -A POSTROUTING -p tcp --sport 5432 -s 10.20.10.0/24 -j MASQUERADE
 </pre>
 

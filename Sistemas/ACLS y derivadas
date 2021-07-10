@@ -1,0 +1,51 @@
+getfattr
+apt install attr
+
+-Como veo si está habilitado o no los atributos extendidos en el sistema de ficheros
+
+root@pruebas-debian:/proc/fs/ext4/vda1# grep xattr options 
+user_xattr
+
+
+
+-Comprobar xattrs de algunos ficheros(ej: Kernel capabilities)
+
+root@pruebas-debian:/proc/fs/ext4/vda1#  getfattr -d -m /usr/bin/ping
+getfattr: Removing leading '/' from absolute path names
+# file: usr/bin/ping
+security.capability
+
+
+
+-Definir algunas acls y comprobar si van.
+
+apt install acl
+
+root@pruebas-debian:/home/debian# touch pruebaacl.txt
+
+
+prueba@pruebas-debian:~$ echo "Prueba ACL" > pruebaacl.txt
+prueba@pruebas-debian:~$ chmod 600 pruebaacl.txt 
+
+debian@pruebas-debian:~$ cat /home/prueba/pruebaacl.txt 
+cat: /home/prueba/pruebaacl.txt: Permission denied
+
+prueba@pruebas-debian:~$ setfacl -m u:debian:r pruebaacl.txt 
+
+
+debian@pruebas-debian:~$ cat /home/prueba/pruebaacl.txt 
+Prueba ACL
+
+
+debian@pruebas-debian:~$ echo "Editamos" >> /home/prueba/pruebaacl.txt 
+-bash: /home/prueba/pruebaacl.txt: Permission denied
+
+prueba@pruebas-debian:~$ setfacl -m u:debian:w pruebaacl.txt 
+prueba@pruebas-debian:~$ exit
+exit
+debian@pruebas-debian:~$ echo "Editamos" >> /home/prueba/pruebaacl.txt 
+debian@pruebas-debian:~$ cat /home/prueba/pruebaacl.txt 
+cat: /home/prueba/pruebaacl.txt: Permission denied
+
+
+Vemos como las acls se leen de arriba a abajo.

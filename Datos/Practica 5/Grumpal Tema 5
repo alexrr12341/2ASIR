@@ -1,0 +1,309 @@
+ORACLE:
+
+1. Cread un índice para la tabla EMP de SCOTT que agilice las consultas por nombre de empleado en un tablespace creado específicamente para índices. ¿Dónde deberiáis ubicar el fichero de datos asociado? ¿Cómo se os ocurre que podriáis probar si el índice resulta de utilidad?
+
+
+Creamos el tablespace que tendrá la ubicación por defecto de todos los tablespace
+```
+Create tablespace Tablespace_Index
+datafile '/opt/oracle/oradata/orcl/index.dbf'
+size 5M
+autoextend on;
+```
+Ahora creamos un indice que apunte a los nombres de los empleados y al tablespace creado
+```
+Create index emp_ename on emp(ename)
+Tablespace Tablespace_Index;
+```
+       
+2. Realizad una consulta al diccionario de datos que muestre qué  índices existen para objetos pertenecientes al esquema de SCOTT y sobre qué columnas están definidos. Averiguad en qué fichero o ficheros de datos se encuentran las extensiones de sus segmentos correspondientes.
+
+```
+SELECT a.TABLE_NAME, a.INDEX_NAME, a.COLUMN_NAME, c.FILE_NAME
+FROM DBA_IND_COLUMNS a, DBA_EXTENTS b, DBA_DATA_FILES c
+WHERE a.TABLE_NAME = b.SEGMENT_NAME
+AND b.FILE_ID = c.FILE_ID
+AND a.TABLE_OWNER='SCOTT';
+
+TABLE_NAME     INDEX_NAME   COLUMN_NAM     FILE_NAME
+------------ ------------ -------------  ----------------------------------------
+DEPT         PK_DEPT      DEPTNO         /opt/oracle/oradata/orcl/users01.dbf
+EMP             PK_EMP          EMPNO          /opt/oracle/oradata/orcl/users01.dbf
+EMP             EMP_ENAME      ENAME          /opt/oracle/oradata/orcl/users01.dbf
+```       
+3. Cread una secuencia para rellenar el campo deptno de la tabla dept de forma coherente con los datos ya existentes. Insertad al menos dos registros haciendo uso de la secuencia.
+
+Creamos la secuencia, que empezará por 50, y incrementará su número 10 veces ya que es como funciona deptno.
+```
+create sequence deptnosec
+  start with 50
+  increment by 10
+  maxvalue 100
+  minvalue 10;
+```
+
+Los valores de la secuencia podrá ser currval y nextval, currval servirá para poder repetir el valor ya dado en la secuencia, y nextval será el siguiente en la lista.
+```
+insert into dept values
+  (deptnosec.nextval,'DEVOPS','SEVILLA');
+
+insert into dept values
+  (deptnosec.nextval,'DEVELOPER','CADIZ');
+```
+
+```
+SQL> select * from dept;
+
+    DEPTNO DNAME      LOC
+---------- -------------- -------------
+    10 ACCOUNTING      NEW YORK
+    20 RESEARCH      DALLAS
+    30 SALES      CHICAGO
+    40 OPERATIONS      BOSTON
+    50 DEVOPS      SEVILLA
+    60 DEVELOPER      CADIZ
+
+6 filas seleccionadas.
+```       
+
+4. Queremos limpiar nuestro fichero tnsnames.ora. Averiguad cuales de sus entradas se están usando en algún enlace de la base de datos.
+
+El fichero tsnames son las conexiones a las que nuestro servidor de Oracle puede acceder, hemos observado que hay una conexión activa.
+
+```
+SQL> select * from v$dblink;
+
+DB_LINK            OWNER_ID LOG HET PROTOC OPENCURSORS IN UPD COMMIT_POINT_STRENGTH     CON_ID
+-------------------- ---------- --- --- ------ ------------ --- --- --------------------- ----------
+GRUPAL                  0 YES NO    UNKN          0 YES NO            0       1
+```
+
+
+Hay creados todos estos db_links, pero solo está activo uno, por lo que los demás podriamos descartarlos
+```
+SQL> select * from dba_db_links;
+
+OWNER             DB_LINK          USERNAME           HOST            CREATED
+-------------------- -------------------- -------------------- -------------------- --------
+SYS             FERNANDO_DELEGADO      LUIS               orcluis            28/01/20
+SYS             FERNANDO_LINKLUIS3   LUIS               orcluis            13/01/20
+SYS             FERNANDO_LINKLUIS5   LUIS               orcluis            13/12/19
+SYS             FERNANDO_LINKLUIS2   LUIS               orcl2            13/12/19
+SYS             FERNANDO_LINKLUIS      LUIS               orcl            13/12/19
+SYS             FERNANDO_LINKORCL      PALOMA           orcl            12/12/19
+SYS             FERNANDO_LINK      PALOMA           oraDB            12/12/19
+PUBLIC             GRUPAL          delegadofer           PSQLU            28/01/20
+PUBLIC             FERNANDODELEGADOLUIS clienteconexion      PSQLU            28/01/20
+PUBLIC             FERNANDODELEGADO      clienteconexion      PSQLU            28/01/20
+PUBLIC             FERNANDOPOSTGRESLUIS clienteconexion      PSQLU            13/12/19
+
+11 filas seleccionadas.
+```
+
+
+5. Meted las tablas EMP y DEPT de SCOTT en un cluster.
+
+Creamos el tablespace para usarlo en el cluster
+```
+Create tablespace Cluster_empdept
+datafile '/opt/oracle/oradata/orcl/empdept.dbf'
+size 5M
+autoextend on;
+```
+
+Creamos el cluster emp_dept que contiene deptno(su columna común)
+```
+CREATE CLUSTER emp_dept
+(deptno NUMBER(2))
+Tablespace Cluster_empdept;
+```
+
+Creamos el indice que usará el cluster
+
+```
+CREATE INDEX index_empdept ON CLUSTER emp_dept;
+```
+
+Creamos un backup de las tablas para después poder crear las tablas sin problema de datos 
+```
+CREATE TABLE SCOTT.DEPT_BAK
+(
+ DEPTNO NUMBER(2),
+ DNAME VARCHAR2(14),
+ LOC VARCHAR2(13),
+ CONSTRAINT PK_DEPT_BAK PRIMARY KEY (DEPTNO)
+);
+
+CREATE TABLE SCOTT.EMP_BAK
+(
+ EMPNO NUMBER(4),
+ ENAME VARCHAR2(10),
+ JOB VARCHAR2(9),
+ MGR NUMBER(4),
+ HIREDATE DATE,
+ SAL NUMBER(7, 2),
+ COMM NUMBER(7, 2),
+ DEPTNO NUMBER(2),
+ CONSTRAINT FK_DEPTNO_BAK FOREIGN KEY (DEPTNO) REFERENCES SCOTT.DEPT_BAK (DEPTNO),
+ CONSTRAINT PK_EMP_BAK PRIMARY KEY (EMPNO)
+);
+```
+
+Insertamos los datos en la tabla backup
+```
+insert into SCOTT.EMP_BAK
+SELECT * FROM SCOTT.EMP;
+
+insert into SCOTT.DEPT_BAK
+Select * from SCOTT.DEPT;
+
+drop table SCOTT.EMP;
+
+drop table SCOTT.DEPT;
+```
+
+Y creamos las tablas con el cluster insertado
+```
+CREATE TABLE SCOTT.DEPT
+(
+ DEPTNO NUMBER(2),
+ DNAME VARCHAR2(14),
+ LOC VARCHAR2(13),
+ CONSTRAINT PK_DEPT PRIMARY KEY (DEPTNO)
+)
+Cluster emp_dept (deptno);
+
+CREATE TABLE SCOTT.EMP
+(
+ EMPNO NUMBER(4),
+ ENAME VARCHAR2(10),
+ JOB VARCHAR2(9),
+ MGR NUMBER(4),
+ HIREDATE DATE,
+ SAL NUMBER(7, 2),
+ COMM NUMBER(7, 2),
+ DEPTNO NUMBER(2),
+ CONSTRAINT FK_DEPTNO FOREIGN KEY (DEPTNO) REFERENCES SCOTT.DEPT (DEPTNO),
+ CONSTRAINT PK_EMP PRIMARY KEY (EMPNO)
+)
+Cluster emp_dept (deptno);
+```
+
+Y volvemos a insertar los datos y borramos las tablas backups
+```
+insert into SCOTT.EMP
+SELECT * from SCOTT.EMP_BAK;
+
+insert into SCOTT.DEPT
+SELECT * FROM SCOTT.DEPT_BAK;
+
+DROP TABLE SCOTT.EMP_BAK;
+DROP TABLE SCOTT.DEPT_BAK;
+```
+
+Miramos que el cluster está en el diccionario de datos.
+```
+SQL> select cluster_name from dba_clusters where owner = 'SCOTT';
+
+CLUSTER_NAME
+--------------------------------------------------------------------------------------------------------------------------------
+EMP_DEPT
+```
+
+6. Realizad un procedimiento llamado BalanceoCargaTemp que balancee la carga de usuarios entre los tablespaces temporales existentes. Para ello averiguará cuántos existen y asignará los usuarios entre ellos de forma equilibrada. Si es necesario para comprobar su funcionamiento, crea tablespaces temporales nuevos.
+
+Vamos a observar cuantos tablespaces temporales tenemos
+
+```
+SQL> SELECT tablespace_name FROM dba_tablespaces WHERE contents = 'TEMPORARY';
+
+TABLESPACE_NAME
+------------------------------
+TEMP
+
+```
+
+Como solo hay uno vamos a crear varios tablespaces
+
+```
+Create temporary tablespace custom_temp
+tempfile '/opt/oracle/oradata/orcl/customtemp.dbf'
+size 5M
+autoextend on;
+
+Create temporary tablespace custom_temp2
+tempfile '/opt/oracle/oradata/orcl/customtemp2.dbf'
+size 3M
+autoextend on;
+```
+
+Create or replace procedure ReorganizarBalance(p_users varchar2)
+is
+	cursor c_tablespaces is
+	SELECT tablespace_name
+	FROM dba_tablespaces 
+	WHERE contents = 'TEMPORARY';
+begin
+end;
+/
+
+Create or replace procedure BalanceoCargaTemp
+is
+	v_cuentaspaces number(2):=0;
+	v_cuentausers number(3):=0;
+	v_resultado number(3):=0;
+	v_modulo number(1):=0;
+begin
+	SELECT count(tablespace_name) into v_cuentaspaces 
+	FROM dba_tablespaces 
+	WHERE contents = 'TEMPORARY';
+	Select count(username) into v_cuentausers
+	from dba_users;
+	v_resultado:=round(v_cuentausers/v_cuentaspaces);
+	
+end;
+/
+
+
+
+7. Realizad un pequeño artículo o una entrada para un blog técnico explicando las limitaciones que presentan MySQL y Postgres para gestionar el almacenamiento de los datos respecto a ORACLE, si es que presentan alguna.
+
+8. Explicad en qué consiste el sharding en MongoDB.
+
+Sharding consiste en repartir los conjuntos de datos a los distintos clusters, que denominamos shars, de tal forma que exista una distribución de los datos equitativamente a lo largo de los distintos nodos. Por lo tanto el sharding nos permite mejorar el rendimiento de nuestro sistema ya que al distribuir la carga entre distintas máquinas no existe sobrecarga de un nodo.
+
+Elementos de la arquitectura
+
+  -  Mongos: Son las instancias que hacen de interfaz entre los shards donde se encuentran los datos.
+    
+  -  Shards: Son los clusters en donde se encuentra los documentos de nuestras colecciones. Cada cluster contiene un subconjunto del dataset. La información dentro de un cluster se agrupa en torno a agrupaciones lógicas denominados chunks.
+
+  -  Config Server: Son instancias mongod que contienen metadatos asociados al dataset. Básicamente indican la localización de los documentos en base 	   a shards o chunks. Puede desplegarse en forma de réplica.
+
+Las acciones que deben tener lugar para que la información se distribuya entre los clusters son:
+
+    Split Chunks: La subdivisión de chunks se produce cuando se sobrepasa el tamaño del mismo ya que existe un exceso de documentos.
+    Migration Chunks: La migración es el procedimiento de distribuir un chunk de un shard a otro. Este proceso lo lleva a cabo un proceso denominado 	 balancer ubicado en el nodo primario del Config Server. Cuando este proceso detecta que la diferencia entre el número de chunks del shard que más 	  tiene con el que menos tiene sobrepasa un umbral y se inicia la migración.
+
+El sharding trabaja a nivel de colección de tal forma que podemos decidir que colecciones queremos distribuir y cuales no. Las colecciones que no se encuentran distribuidas siempre se encontrarán en el shard primario.
+
+9. Resolved el siguiente caso práctico en ORACLE:
+
+En nuestra empresa existen tres departamentos: Informática, Ventas y Producción. En Informática trabajan tres personas: Pepe, Juan y Clara. En Ventas trabajan Ana y Eva y en Producción Jaime y Lidia.
+
+a)  Pepe es el administrador de la base de datos.
+Juan y Clara son los programadores de la base de datos, que trabajan tanto en la aplicación que usa el departamento de Ventas como en la usada por el departamento de Producción.
+Ana y Eva tienen permisos para insertar, modificar y borrar registros en las tablas de la aplicación de Ventas que tienes que crear, y se llaman Productos y Ventas, siendo propiedad de Ana.
+Jaime y Lidia pueden leer la información de esas tablas pero no pueden modificar la información.
+Crea los usuarios y dale los roles y permisos que creas conveniente.  
+
+    b) Los espacios de tablas son System, Producción (ficheros prod1.dbf y prod2.dbf) y Ventas (fichero vent.dbf).
+Los programadores del departamento de Informática pueden crear objetos en cualquier tablespace de la base de datos, excepto en System.
+Los demás usuarios solo podrán crear objetos en su tablespace correspondiente teniendo un límite de espacio de 30 M los del departamento de Ventas y 100K los del de Producción.
+Pepe tiene cuota ilimitada en todos los espacios, aunque el suyo por defecto es System.
+	
+    c) Pepe quiere crear una tabla Prueba que ocupe inicialmente 256K en el tablespace Ventas.
+
+    d) Pepe decide que los programadores tengan acceso a la tabla Prueba antes creada y puedan ceder ese derecho y el de conectarse a la base de datos a los usuarios que ellos quieran.
+	
+    f) Lidia y Jaime dejan la empresa, borra los usuarios y el espacio de tablas correspondiente, detalla los pasos necesarios para que no quede rastro del espacio de tablas.

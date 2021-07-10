@@ -1,0 +1,4 @@
+Montar 1 escenario con vagrant,
+
+Una maquina tiene 2 discos y la otra no tiene, hacer que el disco se monte en la otra por iscsi
+

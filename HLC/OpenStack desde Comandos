@@ -32,3 +32,75 @@ openstack floating ip list -> Lista de Ips Flotantes
 openstack server create --image bf688ff8-549e-4de6-8e96-13b10e85f1fe --flavor 12 --nic net-id=73acd948-99c9-4394-97d0-e8c059f37eca Prueba
 
 openstack server add floating ip Prueba 172.22.200.55 -> Añadir ip flotante
+
+
+flavor=13
+net=73acd948-99c9-4394-97d0-e8c059f37eca
+key=Clave Definitiva
+volumenid=bf688ff8-549e-4de6-8e96-13b10e85f1fe
+ipflotante=172.22.200.96
+
+
+
+
+
+openstack server create --flavor 13 --image bf688ff8-549e-4de6-8e96-13b10e85f1fe --nic net-id=73acd948-99c9-4394-97d0-e8c059f37eca,v4-fixed-ip=10.0.0.15 --security-group default --key-name Clave\ Definitiva croqueta
+
+sudo apt-get install dselect && sudo dselect update
+dpkg --set-selections paquetes-croqueta
+dselect install
+
+/etc/bacula/bacula-fd.conf
+
+```
+
+# Default  Bacula File Daemon Configuration file
+#
+#  For Bacula release 9.4.2 (04 February 2019) -- debian buster/sid
+#
+# There is not much to change here except perhaps the
+# File daemon Name to
+#
+#
+# Copyright (C) 2000-2015 Kern Sibbald
+# License: BSD 2-Clause; see file LICENSE-FOSS
+#
+
+#
+# List Directors who are permitted to contact this File daemon
+#
+Director {
+  Name = choco-dir
+  Password = "bacula"
+}
+
+#
+# Restricted Director, used by tray-monitor to get the
+#   status of the file daemon
+#
+Director {
+  Name = choco-mon
+  Password = "bacula"
+  Monitor = yes
+}
+
+#
+# "Global" File daemon configuration specifications
+#
+FileDaemon {                          # this is me
+  Name = croqueta-fd
+  FDport = 9102                  # where we listen for the director
+  WorkingDirectory = /var/lib/bacula
+  Pid Directory = /run/bacula
+  Maximum Concurrent Jobs = 20
+  Plugin Directory = /usr/lib/bacula
+  FDAddress = 10.0.0.15
+}
+
+# Send all messages except skipped files back to Director
+Messages {
+  Name = Standard
+  director = choco-dir = all, !skipped, !restored
+}
+
+```
